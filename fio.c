@@ -1250,7 +1250,7 @@ static void *thread_main(void *data)
 
 		runtime[DDIR_READ] += utime_since_now(&td->start);
 
-		printf("DJ Fin: s = %lld ms, e = %lld ms, d = %lld ms\n", td->spc1_get_starts, mtime_since_genesis(), mtime_since_genesis() - td->spc1_get_starts);
+		printf("DJ Fin: s = %ld ms, e = %ld ms, d = %ld ms\n", td->spc1_get_starts, mtime_since_genesis(), mtime_since_genesis() - td->spc1_get_starts);
 
 
 		if (td->error || td->terminate)
@@ -1264,7 +1264,7 @@ static void *thread_main(void *data)
 	td->ts.io_bytes[0] = td->io_bytes[0];
 	td->ts.io_bytes[1] = td->io_bytes[1];
 
-	printf("DJ Fin: s = %lld ms, e = %lld ms, d = %lld ms\n", td->spc1_get_starts, mtime_since_genesis(), mtime_since_genesis() - td->spc1_get_starts);
+	printf("DJ Fin: s = %ld ms, e = %ld ms, d = %ld ms\n", td->spc1_get_starts, mtime_since_genesis(), mtime_since_genesis() - td->spc1_get_starts);
 	fflush(stdout);
 
 #ifdef _USE_SPC1
