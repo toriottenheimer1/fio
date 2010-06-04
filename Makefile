@@ -23,12 +23,8 @@ SPC1FLAGS  = -I $(SPC1ROOT) -D_USE_SPC1
 LISTFLAGS  =
 MYFLAGS    = $(SPC1FLAGS) $(LISTFLAGS)
 
-SPC1LIBS   = -L $(SPC1ROOT) -lspc1
-#LISTLIBS   = -L $(LISTROOT) -lsimclist
-LISTLIBS   =
-MYLIBS     = $(SPC1LIBS) $(LISTLIBS)
-
-OBJS += spc1_wrapper.o
+OBJS += spc1/spc1.o
+OBJS += spc1/spc1_wrapper.o
 
 OBJS += lib/rand.o
 OBJS += lib/flist_sort.o
@@ -73,7 +69,7 @@ mandir = $(prefix)/man
 %.o: %.c
 	$(QUIET_CC)$(CC) -o $*.o -c $(MYFLAGS) $(CFLAGS) $<
 fio: $(OBJS)
-	$(QUIET_CC)$(CC) $(MYFLAGS) $(CFLAGS) -o $@ $(filter %.o,$^) $(MYLIBS) $(EXTLIBS) -lpthread -lm -ldl -laio -lrt
+	$(QUIET_CC)$(CC) $(MYFLAGS) $(CFLAGS) -o $@ $(filter %.o,$^) $(EXTLIBS) -lpthread -lm -ldl -laio -lrt
 
 depend:
 	$(QUIET_DEP)$(CC) -MM $(ALL_CFLAGS) *.c engines/*.c crc/*.c 1> .depend

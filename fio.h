@@ -34,7 +34,7 @@
 #include "time.h"
 
 #ifdef _USE_SPC1
-#include "spc1_wrapper.h"
+#include "spc1/spc1_wrapper.h"
 #endif
 
 #ifdef FIO_HAVE_GUASI

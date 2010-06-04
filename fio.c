@@ -43,7 +43,7 @@
 #include "profile.h"
 #include "lib/rand.h"
 #ifdef _USE_SPC1
-#include "spc1_wrapper.h"
+#include "spc1/spc1_wrapper.h"
 #endif
 
 unsigned long page_mask;

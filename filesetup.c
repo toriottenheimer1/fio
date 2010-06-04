@@ -11,7 +11,7 @@
 #include "smalloc.h"
 #include "filehash.h"
 #ifdef _USE_SPC1
-#include "spc1_wrapper.h"
+#include "spc1/spc1_wrapper.h"
 #endif
 
 static int root_warn;

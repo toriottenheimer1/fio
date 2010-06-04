@@ -22,7 +22,7 @@
 #include "profile.h"
 
 #ifdef _USE_SPC1
-#include "spc1_wrapper.h"
+#include "spc1/spc1_wrapper.h"
 #endif
 
 static char fio_version_string[] = "fio 1.39";
