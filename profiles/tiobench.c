@@ -12,12 +12,8 @@ char sz_idx[80], bs_idx[80], loop_idx[80], dir_idx[80], t_idx[80];
 
 static const char *tb_opts[] = {
 	"buffered=0", sz_idx, bs_idx, loop_idx, dir_idx, t_idx,
-	"timeout=600", "group_reporting", "thread", "overwrite=1",
-	"filename=.fio.tio.1:.fio.tio.2:.fio.tio.3:.fio.tio.4",
+	"timeout=10", "group_reporting", "thread", "overwrite=1",
 	"name=seqwrite", "rw=write", "end_fsync=1",
-	"name=randwrite", "stonewall", "rw=randwrite", "end_fsync=1",
-	"name=seqread", "stonewall", "rw=read",
-	"name=randread", "stonewall", "rw=randread", NULL,
 };
 
 static struct fio_option options[] = {
@@ -70,7 +66,7 @@ static void tb_prep_cmdline(void)
 	if (size)
 		sprintf(sz_idx, "size=%llu", size);
 	else
-		strcpy(sz_idx, "size=4*1024*$mb_memory");
+		strcpy(sz_idx, "size=4*1024*1000000");
 
 	sprintf(bs_idx, "bs=%u", bs);
 	sprintf(loop_idx, "loops=%u", loops);

@@ -110,12 +110,31 @@ int read_iolog_get(struct thread_data *td, struct io_u *io_u)
 	struct io_piece *ipo;
 	unsigned long elapsed;
 	
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+		printf("SPC-1 entering read_iolog_get, bsu = %d, str = %d, pid = %d\n", td->bsu, td->str, getpid());
+		fio_io_debug_info("Checking:", io_u);
+		fflush(stdout);
+#endif
+#endif
+
 	while (!flist_empty(&td->io_log_list)) {
 		int ret;
 
 		ipo = flist_entry(td->io_log_list.next, struct io_piece, list);
 		flist_del(&ipo->list);
 
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+		printf("SPC-1 just before ipo_special read_iolog_get, bsu = %d, str = %d, pid = %d\n", td->bsu, td->str, getpid());
+		fio_io_debug_info("Checking:", io_u);
+		printf("ipo->fileno = %d\n", ipo->fileno);
+		printf("ipo->offset = %d\n", ipo->offset);
+		printf("ipo->len = %d\n", ipo->len);
+		printf("ipo->ddir = %d\n", ipo->ddir);
+		fflush(stdout);
+#endif
+#endif
 		ret = ipo_special(td, ipo);
 		if (ret < 0) {
 			free(ipo);
@@ -144,6 +163,13 @@ int read_iolog_get(struct thread_data *td, struct io_u *io_u)
 
 		free(ipo);
 		
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+		printf("SPC-1 leaving read_iolog_get, bsu = %d, str = %d, pid = %d\n", td->bsu, td->str, getpid());
+		fio_io_debug_info("Checking:", io_u);
+		fflush(stdout);
+#endif
+#endif
 		if (ipo->ddir != DDIR_WAIT)
 			return 0;
 	}

@@ -10,6 +10,9 @@
 #include "fio.h"
 #include "smalloc.h"
 #include "filehash.h"
+#ifdef _USE_SPC1
+#include "spc1_wrapper.h"
+#endif
 
 static int root_warn;
 
@@ -584,8 +587,24 @@ int setup_files(struct thread_data *td)
 
 	dprint(FD_FILE, "setup files\n");
 
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+	printf("SPC-1 entering setup_files, pid = %d\n", getpid());
+	printf("Checking value of use_spc1 (= %d) || td->o.read_iolog_file (= %s) = %d\n",
+			td->spc1_opts.use_spc1, td->o.read_iolog_file, td->spc1_opts.use_spc1 || td->o.read_iolog_file);
+	fflush(stdout);
+#endif
+	if (td->spc1_opts.use_spc1 || td->o.read_iolog_file) {
+#ifdef _SPC1_DEBUG
+		printf("SPC-1 leaving setup_files, pid = %d\n", getpid());
+		fflush(stdout);
+#endif
+		return 0;
+	}
+#else
 	if (td->o.read_iolog_file)
 		return 0;
+#endif
 
 	/*
 	 * if ioengine defines a setup() method, it's responsible for

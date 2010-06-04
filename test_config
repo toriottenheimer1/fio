@@ -1,0 +1,35 @@
+/mnt/xphost/asu1 # asu1
+/mnt/xphost/asu2 # asu2
+/mnt/xphost/asu3 # asu3
+
+1 # use_spc1
+0 # run_split
+98 # BSU_number
+
+0 # BSU_first_context
+0 # BSU_last_context
+
+100 # min_iops_generated
+
+0  # runtime hrs
+0 # runtime mins
+20  # runtime secs
+0  # runtime millis
+
+0  # fio hrs
+0 # fio mins
+20  # fio secs
+0  # fio millis
+
+0 # use asu1
+0 # use asu2
+1 # use asu3
+
+2 # asu1 size (GB)
+2 # asu2 size (GB)
+2 # asu3 size (GB)
+
+100000 # iops info every - generate iops info every ?? iops
+0      # iops all after - generate all iops info after ?? iops
+
+

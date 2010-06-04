@@ -21,6 +21,10 @@
 #include "verify.h"
 #include "profile.h"
 
+#ifdef _USE_SPC1
+#include "spc1_wrapper.h"
+#endif
+
 static char fio_version_string[] = "fio 1.39";
 
 #define FIO_RANDSEED		(0xb1899bedUL)
@@ -133,6 +137,13 @@ static struct option l_opts[FIO_NR_OPTIONS] = {
 		.has_arg	= required_argument,
 		.val		= 'p',
 	},
+#ifdef _USE_SPC1
+	{
+		.name		= "spc",
+		.has_arg	= required_argument,
+		.val		= 'W',
+ 	},
+#endif
 	{
 		.name		= NULL,
 	},
@@ -493,6 +504,11 @@ static int add_job(struct thread_data *td, const char *jobname, int job_add_num)
 	const char *engine;
 	char fname[PATH_MAX];
 	int numjobs, file_alloced;
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+	int ib, is;
+#endif
+#endif
 
 	/*
 	 * the def_thread is just for options, it's not a real job
@@ -518,18 +534,59 @@ static int add_job(struct thread_data *td, const char *jobname, int job_add_num)
 		goto err;
 	}
 
-	if (td->o.use_thread)
+	if (td->o.use_thread) {
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+	printf("SPC-1 using threads, pid = %d\n", getpid());
+#endif
+#endif
 		nr_thread++;
-	else
+	} else {
 		nr_process++;
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+	printf("SPC-1 using processes, pid = %d\n", getpid());
+#endif
+#endif
+	}
 
 	if (td->o.odirect)
 		td->io_ops->flags |= FIO_RAWIO;
 
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+	printf("Checking value of use_spc1 = %d, pid = %d\n", global_spc1_opts.use_spc1, getpid());
+	if (global_spc1_opts.use_spc1) {
+		printf("Using SPC-1...\n");
+		for (ib=0; ib<global_spc1_opts.BSU_number; ib++)
+			if ( (spc1_context_from_bsu(ib) >= global_spc1_opts.BSU_first_context) &&
+			     (spc1_context_from_bsu(ib) <= global_spc1_opts.BSU_last_context) )
+				for (is=0; is<STREAMS; is++)
+					printf("size of iostore[%d][%d] = %d\n", ib, is, flist_count(&iostore[ib][is]));
+
+	} else
+		printf("No SPC-1...\n");
+	fflush(stdout);
+#endif
+
+ 	if (global_spc1_opts.use_spc1) {
+
+		copy_spc1_options(&(td->spc1_opts), &global_spc1_opts);
+	//	printf("DJ CC\n");
+	//	fflush(stdout);
+		if (filter_spc1_ios(td, jobname)) goto err;
+	}
+
+	file_alloced = 0;
+if (!td->o.filename && !td->files_index && !td->o.read_iolog_file && !td->spc1_opts.use_spc1) {
+		file_alloced = 1;
+
+#else
+
 	file_alloced = 0;
 	if (!td->o.filename && !td->files_index && !td->o.read_iolog_file) {
 		file_alloced = 1;
-
+#endif
 		if (td->o.nr_files == 1 && exists_and_not_file(jobname))
 			add_file(td, jobname);
 		else {
@@ -728,6 +785,31 @@ static int parse_jobs_ini(char *file, int stonewall_flag)
 	char **opts;
 	int i, alloc_opts, num_opts;
 
+#ifdef _USE_SPC1
+	unsigned int line, first;
+	int ib, is;
+
+	if (global_spc1_opts.use_spc1) {
+		f = NULL;
+#ifdef _SPC1_DEBUG
+		printf("SPC-1 entering parse_jobs_ini, pid = %d\n", getpid());
+#endif
+		line = 0;
+		global = 1;
+	} else {
+		if (!strcmp(file, "-"))
+			f = stdin;
+		else
+			f = fopen(file, "r");
+
+		if (!f) {
+			perror("fopen job file");
+			return 1;
+		}
+	}
+
+#else
+
 	if (!strcmp(file, "-"))
 		f = stdin;
 	else
@@ -737,6 +819,7 @@ static int parse_jobs_ini(char *file, int stonewall_flag)
 		perror("fopen job file");
 		return 1;
 	}
+#endif
 
 	string = malloc(4096);
 
@@ -757,10 +840,31 @@ static int parse_jobs_ini(char *file, int stonewall_flag)
 		 * haven't handled.
 		 */
 		if (!skip_fgets) {
+
+#ifdef _USE_SPC1
+
+			if (global_spc1_opts.use_spc1) {
+				/* Use line to generate the file for SPC-1 */
+#ifdef _SPC1_DEBUG
+				printf("In first loop, global = %d, line = %d, ib = %d, is = %d\n", global, line, ib, is);
+#endif
+				p = gen_spc1_file(string, &global, &line, &ib, &is);
+			} else {
+				p = fgets(string, 4095, f);
+			}
+			if (!p) break;
+
+#else
+
 			p = fgets(string, 4095, f);
 			if (!p)
 				break;
+
+#endif
 		}
+#ifdef _SPC1_DEBUG
+		printf("String read = %s\n", p);
+#endif
 
 		skip_fgets = 0;
 		strip_blank_front(&p);
@@ -778,6 +882,9 @@ static int parse_jobs_ini(char *file, int stonewall_flag)
 
 		name[strlen(name) - 1] = '\0';
 
+#ifdef _SPC1_DEBUG
+		printf("name = %s\n", name);
+#endif
 		if (skip_this_section(name)) {
 			inside_skip = 1;
 			continue;
@@ -811,7 +918,27 @@ static int parse_jobs_ini(char *file, int stonewall_flag)
 		num_opts = 0;
 		memset(opts, 0, alloc_opts * sizeof(char *));
 
+#ifdef _USE_SPC1
+
+		first = 1;
+
+		while (first || (p != NULL) ) {
+			first = 0;
+
+			if (global_spc1_opts.use_spc1) {
+				/* Use line to generate the file for SPC-1 */
+#ifdef _SPC1_DEBUG
+				printf("In second loop, global = %d, line = %d, ib = %d, is = %d\n", global, line, ib, is);
+#endif
+				p = gen_spc1_file(string, &global, &line, &ib, &is);
+			} else {
+				p = fgets(string, 4095, f);
+			}
+			if (!p) break;
+#else
+
 		while ((p = fgets(string, 4096, f)) != NULL) {
+#endif
 			if (is_empty_or_comment(p))
 				continue;
 
@@ -854,6 +981,11 @@ static int parse_jobs_ini(char *file, int stonewall_flag)
 			free(opts[i]);
 		num_opts = 0;
 	} while (!ret);
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+	if (global_spc1_opts.use_spc1) printf("SPC-1 in parse_jobs_ini: leaving first loop, pid = %d\n", getpid());
+#endif
+#endif
 
 	if (dump_cmdline)
 		log_info("\n");
@@ -864,8 +996,16 @@ static int parse_jobs_ini(char *file, int stonewall_flag)
 	free(string);
 	free(name);
 	free(opts);
+#ifdef _USE_SPC1
+	if (!global_spc1_opts.use_spc1 && (f != stdin) )
+		fclose(f);
+#ifdef _SPC1_DEBUG
+	if (global_spc1_opts.use_spc1) printf("SPC-1 leaving parse_jobs_ini, pid = %d\n", getpid());
+#endif
+#else
 	if (f != stdin)
 		fclose(f);
+#endif
 	return ret;
 }
 
@@ -1062,11 +1202,22 @@ static int parse_cmd_line(int argc, char *argv[])
 	struct thread_data *td = NULL;
 	int c, ini_idx = 0, lidx, ret = 0, do_exit = 0, exit_val = 0;
 
+#ifdef _USE_SPC1
+	    global_spc1_opts.use_spc1 = 0; /* By default we don't use SPC-1 */
+#endif
+
 	while ((c = getopt_long_only(argc, argv, "", l_opts, &lidx)) != -1) {
+		printf("Option = %c\n", c);
 		switch (c) {
 		case 'a':
 			smalloc_pool_size = atoi(optarg);
 			break;
+#ifdef _USE_SPC1
+		case 'W':
+			printf("Enabling SPC-1 workload...\n");
+			set_spc1_options(optarg);
+			break;
+#endif
 		case 't':
 			def_timeout = atoi(optarg);
 			break;
@@ -1186,6 +1337,11 @@ static int parse_cmd_line(int argc, char *argv[])
 int parse_options(int argc, char *argv[])
 {
 	int job_files, i;
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+	int ib, is;
+#endif
+#endif
 
 	f_out = stdout;
 	f_err = stderr;
@@ -1198,6 +1354,27 @@ int parse_options(int argc, char *argv[])
 		return 1;
 
 	job_files = parse_cmd_line(argc, argv);
+
+#ifdef _USE_SPC1
+	if (global_spc1_opts.use_spc1) {
+
+		if (gen_spc1_ios()) return 1;
+
+#ifdef _SPC1_DEBUG
+	        printf("SPC-1 checking value of iocount, pid = %d\n", getpid());
+        	for (ib=0; ib<global_spc1_opts.BSU_number; ib++)
+                	if ( (spc1_context_from_bsu(ib) >= global_spc1_opts.BSU_first_context) &&
+                     	     (spc1_context_from_bsu(ib) <= global_spc1_opts.BSU_last_context) )
+                        	for (is=0; is<STREAMS; is++)
+            					printf("size of iostore[%d][%d] = %d\n", ib, is, flist_count(&iostore[ib][is]));
+        	fflush(stdout);
+#endif
+
+		if (fill_def_thread()) return 1;
+		if (parse_jobs_ini(NULL, 0)) return 1;
+
+	}
+#endif
 
 	for (i = 0; i < job_files; i++) {
 		if (fill_def_thread())

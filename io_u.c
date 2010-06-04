@@ -875,21 +875,54 @@ struct io_u *__get_io_u(struct thread_data *td)
 {
 	struct io_u *io_u = NULL;
 
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+		printf("SPC-1 entering __get_io_u, bsu = %d, str = %d, pid = %d\n", td->bsu, td->str, getpid());
+		fflush(stdout);
+#endif
+#endif
+
 	td_io_u_lock(td);
 
 again:
-	if (!flist_empty(&td->io_u_requeues))
+#ifdef _USE_SPC1
+	if (!flist_empty(&td->io_u_requeues)) {
 		io_u = flist_entry(td->io_u_requeues.next, struct io_u, list);
-	else if (!queue_full(td)) {
+#ifdef _SPC1_DEBUG
+		printf("SPC-1 got io_u = %d from requeues...\n", io_u);
+		fflush(stdout);
+#endif
+	} else if (!queue_full(td)) {
 		io_u = flist_entry(td->io_u_freelist.next, struct io_u, list);
-
+#ifdef _SPC1_DEBUG
+		printf("SPC-1 got io_u = %d from freelist...\n", io_u);
+		fflush(stdout);
+#endif
 		io_u->buflen = 0;
 		io_u->resid = 0;
 		io_u->file = NULL;
 		io_u->end_io = NULL;
 	}
+#else
+	if (!flist_empty(&td->io_u_requeues))
+			io_u = flist_entry(td->io_u_requeues.next, struct io_u, list);
+	else if (!queue_full(td)) {
+			io_u = flist_entry(td->io_u_freelist.next, struct io_u, list);
+
+			io_u->buflen = 0;
+			io_u->resid = 0;
+			io_u->file = NULL;
+			io_u->end_io = NULL;
+	}
+#endif
 
 	if (io_u) {
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+		printf("SPC-1 got io_u = %d...\n", io_u);
+		fflush(stdout);
+#endif
+#endif
 		assert(io_u->flags & IO_U_F_FREE);
 		io_u->flags &= ~(IO_U_F_FREE | IO_U_F_FREE_DEF);
 
@@ -908,6 +941,12 @@ again:
 	}
 
 	td_io_u_unlock(td);
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+		printf("SPC-1 leaving __get_io_u, io_u = %d, bsu = %d, str = %d, pid = %d\n", io_u, td->bsu, td->str, getpid());
+		fflush(stdout);
+#endif
+#endif
 	return io_u;
 }
 
@@ -920,11 +959,24 @@ struct io_u *get_io_u(struct thread_data *td)
 	struct fio_file *f;
 	struct io_u *io_u;
 
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+	printf("SPC-1 entering get_io_u, bsu = %d, str = %d, pid = %d\n", td->bsu, td->str, getpid());
+#endif
+#endif
+
 	io_u = __get_io_u(td);
 	if (!io_u) {
 		dprint(FD_IO, "__get_io_u failed\n");
 		return NULL;
 	}
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+	printf("SPC-1 in get_io_u just after __get_io, bsu = %d, str = %d, pid = %d\n", td->bsu, td->str, getpid());
+	fio_io_debug_info("SPC-1 io_u", io_u);
+	fflush(stdout);
+#endif
+#endif
 
 	/*
 	 * from a requeue, io_u already setup
@@ -938,13 +990,32 @@ struct io_u *get_io_u(struct thread_data *td)
 	if (td->o.read_iolog_file) {
 		if (read_iolog_get(td, io_u))
 			goto err_put;
+#ifdef _USE_SPC1
+	} else if (td->spc1_opts.use_spc1) {
+		if (get_spc1_io(td, io_u))
+			goto err_put;
+#endif
 	} else if (set_io_u_file(td, io_u)) {
 		dprint(FD_IO, "io_u %p, setting file failed\n", io_u);
 		goto err_put;
 	}
 
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+	printf("SPC-1 got io_u, bsu = %d, str = %d, pid = %d\n", td->bsu, td->str, getpid());
+	fflush(stdout);
+#endif
+#endif
+
 	f = io_u->file;
 	assert(fio_file_open(f));
+
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+	printf("SPC-1 file ok, bsu = %d, str = %d, pid = %d\n", td->bsu, td->str, getpid());
+	fflush(stdout);
+#endif
+#endif
 
 	if (!ddir_sync(io_u->ddir)) {
 		if (!io_u->buflen && !(td->io_ops->flags & FIO_NOIO)) {
@@ -960,6 +1031,13 @@ struct io_u *get_io_u(struct thread_data *td)
 			io_u_fill_buffer(td, io_u, io_u->xfer_buflen);
 	}
 
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+	printf("SPC-1 file ready, bsu = %d, str = %d, pid = %d\n", td->bsu, td->str, getpid());
+	fflush(stdout);
+#endif
+#endif
+
 	/*
 	 * Set io data pointers.
 	 */
@@ -968,6 +1046,12 @@ struct io_u *get_io_u(struct thread_data *td)
 
 out:
 	if (!td_io_prep(td, io_u)) {
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+	printf("SPC-1 leaving get_io_u, bsu = %d, str = %d, pid = %d\n", td->bsu, td->str, getpid());
+	fflush(stdout);
+#endif
+#endif
 		if (!td->o.disable_slat)
 			fio_gettime(&io_u->start_time, NULL);
 		return io_u;
@@ -1214,7 +1298,11 @@ void io_u_queued(struct thread_data *td, struct io_u *io_u)
 void io_u_fill_buffer(struct thread_data *td, struct io_u *io_u,
 		      unsigned int max_bs)
 {
+	time_t seconds;
 	long *ptr = io_u->buf;
+
+	time(&seconds);
+	srand((unsigned int)seconds);
 
 	if (!td->o.zero_buffers) {
 		unsigned long r = __rand(&__fio_rand_state);

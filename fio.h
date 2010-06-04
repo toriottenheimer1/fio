@@ -33,6 +33,10 @@
 #include "profile.h"
 #include "time.h"
 
+#ifdef _USE_SPC1
+#include "spc1_wrapper.h"
+#endif
+
 #ifdef FIO_HAVE_GUASI
 #include <guasi.h>
 #endif
@@ -441,6 +445,21 @@ struct thread_data {
 	 */
 	struct prof_io_ops prof_io_ops;
 	void *prof_data;
+
+#ifdef _USE_SPC1
+	/*
+	 * For generating SPC-1 workloads
+	 */
+	struct spc1_options spc1_opts;
+
+	unsigned asu, bsu, str;
+
+	struct flist_head iostore;
+	unsigned short first_io;
+
+	unsigned long spc1_get_starts;
+
+#endif
 };
 
 /*

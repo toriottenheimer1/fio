@@ -9,6 +9,27 @@ OBJS = gettime.o fio.o ioengines.o init.o stat.o log.o time.o filesetup.o \
 	rbtree.o diskutil.o fifo.o blktrace.o smalloc.o filehash.o helpers.o \
 	cgroup.o profile.o debug.o
 
+##MYLIBSROOT = ..
+
+MYLIBSROOT = ..
+#MYLIBSROOT = /root/Workload
+SPC1ROOT   = $(MYLIBSROOT)/spc1
+LISTROOT   = $(MYLIBSROOT)/simclist-1.4.4rc4
+
+#SPC1FLAGS  = -I $(SPC1ROOT)
+SPC1FLAGS  = -I $(SPC1ROOT) -D_USE_SPC1
+#SPC1FLAGS  = -I $(SPC1ROOT) -D_USE_SPC1 -D_SPC1_DEBUG
+#LISTFLAGS  = -I $(LISTROOT)
+LISTFLAGS  =
+MYFLAGS    = $(SPC1FLAGS) $(LISTFLAGS)
+
+SPC1LIBS   = -L $(SPC1ROOT) -lspc1
+#LISTLIBS   = -L $(LISTROOT) -lsimclist
+LISTLIBS   =
+MYLIBS     = $(SPC1LIBS) $(LISTLIBS)
+
+OBJS += spc1_wrapper.o
+
 OBJS += lib/rand.o
 OBJS += lib/flist_sort.o
 
@@ -50,9 +71,9 @@ bindir = $(prefix)/bin
 mandir = $(prefix)/man
 
 %.o: %.c
-	$(QUIET_CC)$(CC) -o $*.o -c $(CFLAGS) $<
+	$(QUIET_CC)$(CC) -o $*.o -c $(MYFLAGS) $(CFLAGS) $<
 fio: $(OBJS)
-	$(QUIET_CC)$(CC) $(CFLAGS) -o $@ $(filter %.o,$^) $(EXTLIBS) -lpthread -lm -ldl -laio -lrt
+	$(QUIET_CC)$(CC) $(MYFLAGS) $(CFLAGS) -o $@ $(filter %.o,$^) $(MYLIBS) $(EXTLIBS) -lpthread -lm -ldl -laio -lrt
 
 depend:
 	$(QUIET_DEP)$(CC) -MM $(ALL_CFLAGS) *.c engines/*.c crc/*.c 1> .depend

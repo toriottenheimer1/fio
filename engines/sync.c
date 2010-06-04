@@ -88,11 +88,29 @@ static int fio_syncio_queue(struct thread_data *td, struct io_u *io_u)
 
 	fio_ro_check(td, io_u);
 
-	if (io_u->ddir == DDIR_READ)
-		ret = read(f->fd, io_u->xfer_buf, io_u->xfer_buflen);
-	else if (io_u->ddir == DDIR_WRITE)
-		ret = write(f->fd, io_u->xfer_buf, io_u->xfer_buflen);
-	else
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+	printf("SPC-1 in fio_syncio_queue, bsu = %d, str = %d, pid = %d\n", td->bsu, td->str, getpid());
+	fio_io_debug_info("Checking:", io_u);
+	printf("R/W = %d, file = %d, xfer_buf = %d, xfer_buflen = %d\n", io_u->ddir, io_u->file, io_u->xfer_buf, io_u->xfer_buflen);
+	fflush(stdout);
+#endif
+#endif
+
+ 	if (io_u->ddir == DDIR_READ) {
+  		ret = read(f->fd, io_u->xfer_buf, io_u->xfer_buflen);
+#ifdef _USE_SPC1
+ 		numReads++;
+ 		if (numReads == maxReads) return 1;
+#endif
+ 	} else if (io_u->ddir == DDIR_WRITE) {
+  		ret = write(f->fd, io_u->xfer_buf, io_u->xfer_buflen);
+#ifdef _USE_SPC1
+		numWrites++;
+		if (numWrites == maxWrites) return 1;
+#endif
+		}
+  	else
 		ret = do_io_u_sync(td, io_u);
 
 	return fio_io_end(td, io_u, ret);

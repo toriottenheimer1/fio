@@ -42,6 +42,9 @@
 #include "cgroup.h"
 #include "profile.h"
 #include "lib/rand.h"
+#ifdef _USE_SPC1
+#include "spc1_wrapper.h"
+#endif
 
 unsigned long page_mask;
 unsigned long page_size;
@@ -138,7 +141,7 @@ static void sig_int(int sig)
 	if (threads) {
 		log_info("\nfio: terminating on signal %d\n", sig);
 		fflush(stdout);
-		terminate_threads(TERMINATE_ALL);
+	terminate_threads(TERMINATE_ALL);
 	}
 }
 
@@ -591,8 +594,27 @@ static void do_io(struct thread_data *td)
 	else
 		td_set_runstate(td, TD_RUNNING);
 
+#ifdef _USE_SPC1
+	if (!td->spc1_opts.run_split) {
+#ifdef _SPC1_DEBUG
+		printf("SPC-1 in do_io, starting main loop, pid = %d\n", getpid());
+#endif
+	} else {
+#ifdef _SPC1_DEBUG
+		printf("SPC-1 in do_io, starting main loop, size of iostore[%d][%d] = %d, pid = %d\n",
+				td->bsu, td->str, flist_count(&td->iostore), getpid());
+#endif
+	}
+
 	while ( (td->o.read_iolog_file && !flist_empty(&td->io_log_list)) ||
+			(td->spc1_opts.use_spc1 && !flist_empty(&td->iostore)) ||
 	        ((td->this_io_bytes[0] + td->this_io_bytes[1]) < td->o.size) ) {
+#else
+
+	while ( (td->o.read_iolog_file && !flist_empty(&td->io_log_list)) ||
+		        ((td->this_io_bytes[0] + td->this_io_bytes[1]) < td->o.size) ) {
+#endif
+
 		struct timeval comp_time;
 		unsigned long bytes_done[2] = { 0, 0 };
 		int min_evts = 0;
@@ -629,7 +651,21 @@ static void do_io(struct thread_data *td)
 		else
 			td_set_runstate(td, TD_RUNNING);
 
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+		printf("SPC-1 in do_io just before td_io_queue, bsu = %d, str = %d, pid = %d\n", td->bsu, td->str, getpid());
+		fio_io_debug_info("Checking:", io_u);
+		fflush(stdout);
+#endif
+#endif
 		ret = td_io_queue(td, io_u);
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+		printf("SPC-1 in do_io just after td_io_queue, bsu = %d, str = %d, pid = %d\n", td->bsu, td->str, getpid());
+		fio_io_debug_info("Checking:", io_u);
+		fflush(stdout);
+#endif
+#endif
 		switch (ret) {
 		case FIO_Q_COMPLETED:
 			if (io_u->error) {
@@ -697,6 +733,13 @@ sync_done:
 		 * See if we need to complete some commands
 		 */
 		full = queue_full(td) || ret == FIO_Q_BUSY;
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+		printf("SPC-1 in do_io just before completing commands, bsu = %d, str = %d, pid = %d\n", td->bsu, td->str, getpid());
+		fio_io_debug_info("Checking:", io_u);
+		fflush(stdout);
+#endif
+#endif
 		if (full || !td->o.iodepth_batch_complete) {
 			min_evts = min(td->o.iodepth_batch_complete,
 					td->cur_depth);
@@ -842,6 +885,13 @@ static int init_io_u(struct thread_data *td)
 		dprint(FD_MEM, "io_u alloc %p, index %u\n", io_u, i);
 
 		if (!(td->io_ops->flags & FIO_NOIO)) {
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+			printf("SPC-1 in init_io_u, creating buffer, pid = %d\n", getpid());
+			printf("p = %d, max_bs = %d, i = %d\n", p, max_bs, i);
+			fflush(stdout);
+#endif
+#endif
 			io_u->buf = p + max_bs * i;
 			dprint(FD_MEM, "io_u %p, mem %p\n", io_u, io_u->buf);
 
@@ -1014,6 +1064,12 @@ static void *thread_main(void *data)
 	pthread_condattr_t attr;
 	int clear_state;
 
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+	printf("SPC-1 entering thread_main, bsu = %d, str = %d, , pid = %d\n", td->bsu, td->str, getpid());
+#endif
+#endif
+
 	if (!td->o.use_thread)
 		setsid();
 
@@ -1034,6 +1090,11 @@ static void *thread_main(void *data)
 	pthread_cond_init(&td->verify_cond, &attr);
 	pthread_cond_init(&td->free_cond, &attr);
 
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+	printf("SPC-1 TD_CREATED -> TD_INITIALIZED, bsu = %d, str = %d, pid = %d\n", td->bsu, td->str, getpid());
+#endif
+#endif
 	td_set_runstate(td, TD_INITIALIZED);
 	dprint(FD_MUTEX, "up startup_mutex\n");
 	fio_mutex_up(startup_mutex);
@@ -1062,6 +1123,15 @@ static void *thread_main(void *data)
 	 */
 	if (init_iolog(td))
 		goto err;
+
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+	printf("SPC-1 in thread_main, initialising IOs, pid = %d\n", getpid());
+#endif
+	if (global_spc1_opts.use_spc1)
+		if (init_spc1_io(td))
+			goto err;
+#endif
 
 	if (init_io_u(td))
 		goto err;
@@ -1123,6 +1193,12 @@ static void *thread_main(void *data)
 			goto err;
 	}
 
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+	printf("SPC-1 in thread_main, starting main loop, pid = %d\n", getpid());
+#endif
+#endif
+
 	fio_gettime(&td->epoch, NULL);
 	getrusage(RUSAGE_SELF, &td->ts.ru_start);
 
@@ -1174,6 +1250,9 @@ static void *thread_main(void *data)
 
 		runtime[DDIR_READ] += utime_since_now(&td->start);
 
+		printf("DJ Fin: s = %lld ms, e = %lld ms, d = %lld ms\n", td->spc1_get_starts, mtime_since_genesis(), mtime_since_genesis() - td->spc1_get_starts);
+
+
 		if (td->error || td->terminate)
 			break;
 	}
@@ -1184,6 +1263,18 @@ static void *thread_main(void *data)
 	td->ts.total_run_time = mtime_since_now(&td->epoch);
 	td->ts.io_bytes[0] = td->io_bytes[0];
 	td->ts.io_bytes[1] = td->io_bytes[1];
+
+	printf("DJ Fin: s = %lld ms, e = %lld ms, d = %lld ms\n", td->spc1_get_starts, mtime_since_genesis(), mtime_since_genesis() - td->spc1_get_starts);
+	fflush(stdout);
+
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+	printf("SPC-1 in thread_main, finalising IOs, pid = %d\n", getpid());
+#endif
+	if (global_spc1_opts.use_spc1)
+		if (fin_spc1_io(td))
+			goto err;
+#endif
 
 	fio_mutex_down(writeout_mutex);
 	if (td->ts.bw_log) {
@@ -1262,6 +1353,12 @@ static int fork_main(int shmid, int offset)
 	}
 
 	td = data + offset * sizeof(struct thread_data);
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+	printf("SPC-1 in fork_main, bsu = %d, str = %d, pid = %d\n", td->bsu, td->str, getpid());
+	printf("about to call thread_main\n");
+#endif
+#endif
 	ret = thread_main(td);
 	shmdt(data);
 	return (int) (unsigned long) ret;
@@ -1439,7 +1536,22 @@ static void run_threads(void)
 	nr_started = 0;
 	m_rate = t_rate = 0;
 
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+		printf("SPC-1 in run_threads, starting first thread loop\n");
+		fflush(stdout);
+#endif
+#endif
 	for_each_td(td, i) {
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+		if (td->spc1_opts.use_spc1) {
+			printf("SPC-1 in run_threads, bsu = %d, str = %d, i = %d, pid = %d\n", td->bsu, td->str, i, getpid());
+			fflush(stdout);
+		}
+#endif
+#endif
+
 		print_status_init(td->thread_number - 1);
 
 		if (!td->o.create_serialize) {
@@ -1475,7 +1587,24 @@ static void run_threads(void)
 		}
 
 		init_disk_util(td);
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+		if (td->spc1_opts.use_spc1) {
+			printf("SPC-1 completed file operations for bsu = %d, str = %d, pid = %d\n", td->bsu, td->str, getpid());
+			fflush(stdout);
+		}
+#endif
+#endif
 	}
+
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+	if (td->spc1_opts.use_spc1) {
+		printf("SPC-1 completed file operations, pid = %d\n", getpid());
+		fflush(stdout);
+	}
+#endif
+#endif
 
 	set_genesis_time();
 
@@ -1488,6 +1617,12 @@ static void run_threads(void)
 		 * create threads (TD_NOT_CREATED -> TD_CREATED)
 		 */
 		for_each_td(td, i) {
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+			printf("In main for loop, i = %d, pid = %d\n",i, getpid());
+			fflush(stdout);
+#endif
+#endif
 			if (td->runstate != TD_NOT_CREATED)
 				continue;
 
@@ -1503,6 +1638,12 @@ static void run_threads(void)
 			if (td->o.start_delay) {
 				spent = mtime_since_genesis();
 
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+				printf("In main for loop, delaying... i = %d, pid = %d\n",i, getpid());
+				fflush(stdout);
+#endif
+#endif
 				if (td->o.start_delay * 1000 > spent)
 					continue;
 			}
@@ -1521,7 +1662,15 @@ static void run_threads(void)
 			map[this_jobs++] = td;
 			nr_started++;
 
+#ifdef _USE_SPC1
+#ifdef THREADS
+			if (td->o.use_thread || td->use_spc1) {
+#else
 			if (td->o.use_thread) {
+#endif
+#else
+  			if (td->o.use_thread) {
+#endif
 				int ret;
 
 				dprint(FD_PROCESS, "will pthread_create\n");
@@ -1548,6 +1697,12 @@ static void run_threads(void)
 				} else if (i == fio_debug_jobno)
 					*fio_debug_jobp = pid;
 			}
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+ 			printf("SPC-1 continuing, bsu = %d, str = %d, pid = %d\n", td->bsu, td->str, getpid());
+ 			fflush(stdout);
+#endif
+#endif
 			dprint(FD_MUTEX, "wait on startup_mutex\n");
 			if (fio_mutex_down_timeout(startup_mutex, 10)) {
 				log_err("fio: job startup hung? exiting.\n");
@@ -1635,6 +1790,10 @@ static void run_threads(void)
 int main(int argc, char *argv[])
 {
 	long ps;
+
+#ifdef _USE_SPC1
+	numReads = numWrites = 0;
+#endif
 
 	sinit();
 	init_rand(&__fio_rand_state);

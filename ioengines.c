@@ -244,6 +244,13 @@ int td_io_queue(struct thread_data *td, struct io_u *io_u)
 	if (!ddir_sync(io_u->ddir))
 		td->io_issues[io_u->ddir]++;
 
+#ifdef _USE_SPC1
+#ifdef _SPC1_DEBUG
+		printf("SPC-1 in td_io_queue, just before td->io_ops->queue, bsu = %d, str = %d, pid = %d\n", td->bsu, td->str, getpid());
+		fio_io_debug_info("Checking:", io_u);
+		fflush(stdout);
+#endif
+#endif
 	ret = td->io_ops->queue(td, io_u);
 
 	unlock_file(td, io_u->file);
