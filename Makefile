@@ -74,6 +74,9 @@ endif
 ifdef CONFIG_SOCKLEN_T
   CFLAGS += -DCONFIG_SOCKLEN_T
 endif
+ifdef CONFIG_SFAA
+  CFLAGS += -DCONFIG_SFAA
+endif
 
 ifeq ($(UNAME), Linux)
   SOURCE += diskutil.c fifo.c blktrace.c helpers.c cgroup.c trim.c \

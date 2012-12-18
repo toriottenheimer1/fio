@@ -375,7 +375,8 @@ unsigned long time_since_now(struct timeval *s)
 	return mtime_since_now(s) / 1000;
 }
 
-#if defined(FIO_HAVE_CPU_AFFINITY) && defined(ARCH_HAVE_CPU_CLOCK)
+#if defined(FIO_HAVE_CPU_AFFINITY) && defined(ARCH_HAVE_CPU_CLOCK)  && \
+    defined(CONFIG_SFAA)
 
 #define CLOCK_ENTRIES	100000
 
