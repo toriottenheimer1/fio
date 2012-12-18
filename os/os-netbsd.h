@@ -16,10 +16,8 @@
 
 #include "../file.h"
 
-#define FIO_HAVE_POSIXAIO
 #define FIO_HAVE_FADVISE
 #define FIO_HAVE_ODIRECT
-#define FIO_HAVE_STRSEP
 #define FIO_HAVE_FDATASYNC
 #define FIO_USE_GENERIC_BDEV_SIZE
 #define FIO_USE_GENERIC_RAND

@@ -12,9 +12,7 @@
 
 #include "../file.h"
 
-#define FIO_HAVE_POSIXAIO
 #define FIO_HAVE_ODIRECT
-#define FIO_HAVE_STRSEP
 #define FIO_USE_GENERIC_RAND
 #define FIO_USE_GENERIC_INIT_RANDOM_STATE
 #define FIO_HAVE_CHARDEV_SIZE

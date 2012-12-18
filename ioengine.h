@@ -1,6 +1,10 @@
 #ifndef FIO_IOENGINE_H
 #define FIO_IOENGINE_H
 
+#ifdef CONFIG_LIBAIO
+#include <libaio.h>
+#endif
+
 #define FIO_IOOPS_VERSION	14
 
 enum {
@@ -19,10 +23,10 @@ enum {
  */
 struct io_u {
 	union {
-#ifdef FIO_HAVE_LIBAIO
+#ifdef CONFIG_LIBAIO
 		struct iocb iocb;
 #endif
-#ifdef FIO_HAVE_POSIXAIO
+#ifdef CONFIG_POSIXAIO
 		os_aiocb_t aiocb;
 #endif
 #ifdef FIO_HAVE_SGIO
@@ -37,7 +41,7 @@ struct io_u {
 #ifdef FIO_HAVE_BINJECT
 		struct b_user_cmd buc;
 #endif
-#ifdef FIO_HAVE_RDMA
+#ifdef CONFIG_RDMA
 		struct ibv_mr *mr;
 #endif
 		void *mmap_data;

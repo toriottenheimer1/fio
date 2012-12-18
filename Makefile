@@ -32,20 +32,29 @@ SOURCE := gettime.c fio.c ioengines.c init.c stat.c log.c time.c filesetup.c \
 		json.c lib/zipf.c lib/axmap.c lib/lfsr.c gettime-thread.c
 
 ifdef CONFIG_LIBAIO
-  CFLAGS += -DFIO_HAVE_LIBAIO
+  CFLAGS += -DCONFIG_LIBAIO
   SOURCE += engines/libaio.c
 endif
 ifdef CONFIG_RDMA
-  CFLAGS += -DFIO_HAVE_RDMA
+  CFLAGS += -DCONFIG_RDMA
   SOURCE += engines/rdma.c
+endif
+ifdef CONFIG_POSIXAIO
+  CFLAGS += -DCONFIG_POSIXAIO
+  SOURCE += engines/posixaio.c
+endif
+
+ifndef CONFIG_STRSEP
+  CFLAGS += -DCONFIG_STRSEP
+  SOURCE += lib/strsep.c
 endif
 
 ifeq ($(UNAME), Linux)
   SOURCE += diskutil.c fifo.c blktrace.c helpers.c cgroup.c trim.c \
-		engines/posixaio.c engines/sg.c \
-		engines/splice.c engines/syslet-rw.c engines/guasi.c \
-		engines/binject.c engines/rdma.c profiles/tiobench.c \
-		engines/fusion-aw.c engines/falloc.c engines/e4defrag.c
+		engines/sg.c engines/splice.c engines/syslet-rw.c \
+		engines/guasi.c engines/binject.c engines/rdma.c \
+		profiles/tiobench.c engines/fusion-aw.c engines/falloc.c \
+		engines/e4defrag.c
   LIBS += -lpthread -ldl
   LDFLAGS += -rdynamic
 endif
@@ -58,34 +67,33 @@ ifeq ($(UNAME), Android)
   CPPFLAGS += -DFIO_NO_HAVE_SHM_H
 endif
 ifeq ($(UNAME), SunOS)
-  SOURCE += fifo.c lib/strsep.c helpers.c engines/posixaio.c \
-		engines/solarisaio.c
+  SOURCE += fifo.c helpers.c engines/solarisaio.c
   LIBS	 += -lpthread -ldl -laio -lrt -lnsl -lsocket
   CPPFLAGS += -D__EXTENSIONS__
 endif
 ifeq ($(UNAME), FreeBSD)
-  SOURCE += helpers.c engines/posixaio.c
+  SOURCE += helpers.c
   LIBS	 += -lpthread -lrt
   LDFLAGS += -rdynamic
 endif
 ifeq ($(UNAME), NetBSD)
-  SOURCE += helpers.c engines/posixaio.c
+  SOURCE += helpers.c
   LIBS	 += -lpthread -lrt
   LDFLAGS += -rdynamic
 endif
 ifeq ($(UNAME), AIX)
-  SOURCE += fifo.c helpers.c lib/getopt_long.c engines/posixaio.c
+  SOURCE += fifo.c helpers.c lib/getopt_long.c
   LIBS	 += -lpthread -ldl -lrt
   CPPFLAGS += -D_LARGE_FILES -D__ppc__
   LDFLAGS += -L/opt/freeware/lib -Wl,-blibpath:/opt/freeware/lib:/usr/lib:/lib -Wl,-bmaxdata:0x80000000
 endif
 ifeq ($(UNAME), HP-UX)
-  SOURCE += fifo.c helpers.c lib/getopt_long.c lib/strsep.c engines/posixaio.c
+  SOURCE += fifo.c helpers.c lib/getopt_long.c
   LIBS   += -lpthread -ldl -lrt
   CFLAGS += -D_LARGEFILE64_SOURCE
 endif
 ifeq ($(UNAME), Darwin)
-  SOURCE += helpers.c engines/posixaio.c
+  SOURCE += helpers.c
   LIBS	 += -lpthread -ldl
 endif
 ifneq (,$(findstring CYGWIN,$(UNAME)))

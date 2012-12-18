@@ -44,11 +44,7 @@ enum {
 #error "unsupported os"
 #endif
 
-#ifdef FIO_HAVE_LIBAIO
-#include <libaio.h>
-#endif
-
-#ifdef FIO_HAVE_POSIXAIO
+#ifdef CONFIG_POSIXAIO
 #include <aio.h>
 #ifndef FIO_OS_HAVE_AIOCB_TYPEDEF
 typedef struct aiocb os_aiocb_t;
@@ -60,7 +56,7 @@ typedef struct aiocb os_aiocb_t;
 #include <scsi/sg.h>
 #endif
 
-#ifndef FIO_HAVE_STRSEP
+#ifdef CONFIG_STRSEP
 #include "../lib/strsep.h"
 #endif
 

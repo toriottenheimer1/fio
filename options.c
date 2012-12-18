@@ -1272,12 +1272,12 @@ static struct fio_option options[FIO_MAX_OPTS] = {
 			  { .ival = "vsync",
 			    .help = "Use readv/writev",
 			  },
-#ifdef FIO_HAVE_LIBAIO
+#ifdef CONFIG_LIBAIO
 			  { .ival = "libaio",
 			    .help = "Linux native asynchronous IO",
 			  },
 #endif
-#ifdef FIO_HAVE_POSIXAIO
+#ifdef CONFIG_POSIXAIO
 			  { .ival = "posixaio",
 			    .help = "POSIX asynchronous IO",
 			  },
