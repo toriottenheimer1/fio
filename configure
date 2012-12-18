@@ -1,0 +1,263 @@
+#!/bin/sh
+#
+# Fio configure script. Heavily influenced by the manual qemu configure
+# script. Sad this this is easier than autoconf and enemies.
+#
+
+# set temporary file name
+if test ! -z "$TMPDIR" ; then
+    TMPDIR1="${TMPDIR}"
+elif test ! -z "$TEMPDIR" ; then
+    TMPDIR1="${TEMPDIR}"
+else
+    TMPDIR1="/tmp"
+fi
+
+TMPC="${TMPDIR1}/fio-conf-${RANDOM}-$$-${RANDOM}.c"
+TMPO="${TMPDIR1}/fio-conf-${RANDOM}-$$-${RANDOM}.o"
+TMPE="${TMPDIR1}/fio-conf-${RANDOM}-$$-${RANDOM}.exe"
+
+# NB: do not call "exit" in the trap handler; this is buggy with some shells;
+# see <1285349658-3122-1-git-send-email-loic.minier@linaro.org>
+trap "rm -f $TMPC $TMPO $TMPE" EXIT INT QUIT TERM
+
+rm -rf config.log
+
+config_host_mak="config-host.mak"
+config_host_ld="config-host.ld"
+
+# Print a helpful header at the top of config.log
+echo "# FIO configure log $(date)" >> config.log
+printf "# Configured with:" >> config.log
+printf " '%s'" "$0" "$@" >> config.log
+echo >> config.log
+echo "#" >> config.log
+
+do_cc() {
+    # Run the compiler, capturing its output to the log.
+    echo $cc "$@" >> config.log
+    $cc "$@" >> config.log 2>&1 || return $?
+    # Test passed. If this is an --enable-werror build, rerun
+    # the test with -Werror and bail out if it fails. This
+    # makes warning-generating-errors in configure test code
+    # obvious to developers.
+    if test "$werror" != "yes"; then
+        return 0
+    fi
+    # Don't bother rerunning the compile if we were already using -Werror
+    case "$*" in
+        *-Werror*)
+           return 0
+        ;;
+    esac
+    echo $cc -Werror "$@" >> config.log
+    $cc -Werror "$@" >> config.log 2>&1 && return $?
+    echo "ERROR: configure test passed without -Werror but failed with -Werror."
+    echo "This is probably a bug in the configure script. The failing command"
+    echo "will be at the bottom of config.log."
+    echo "You can run configure with --disable-werror to bypass this check."
+    exit 1
+}
+
+compile_object() {
+  do_cc $QEMU_CFLAGS -c -o $TMPO $TMPC
+}
+
+compile_prog() {
+  local_cflags="$1"
+  local_ldflags="$2"
+  do_cc $QEMU_CFLAGS $local_cflags -o $TMPE $TMPC $LDFLAGS $local_ldflags
+}
+
+feature_not_found() {
+  feature=$1
+
+  echo "ERROR"
+  echo "ERROR: User requested feature $feature"
+  echo "ERROR: configure was not able to find it"
+  echo "ERROR"
+  exit 1;
+}
+
+cc="${CC-${cross_prefix}gcc}"
+
+libaio="no"
+
+##########################################
+# linux-aio probe
+if test "$linux_aio" != "no" ; then
+  cat > $TMPC <<EOF
+#include <libaio.h>
+#include <sys/eventfd.h>
+#include <stddef.h>
+int main(void) { io_setup(0, NULL); io_set_eventfd(NULL, 0); eventfd(0, 0); return 0; }
+EOF
+  if compile_prog "" "-laio" ; then
+    libaio=yes
+    LIBS="-laio $LIBS"
+  else
+    if test "$libaio" = "yes" ; then
+      feature_not_found "linux AIO"
+    fi
+    libaio=no
+  fi
+fi
+
+##########################################
+# __sync_fetch_and_and test
+sfaa="no"
+cat > $TMPC << EOF
+static int sfaa(int *ptr)
+{
+  return __sync_fetch_and_and(ptr, 0);
+}
+
+int main(int argc, char **argv)
+{
+  int val = 42;
+  sfaa(&val);
+  return val;
+}
+EOF
+if compile_prog "" "" ; then
+    sfaa="yes"
+fi
+
+##########################################
+# libverbs probe
+libverbs="no"
+cat > $TMPC << EOF
+#include <stdio.h>
+#include <infiniband/arch.h>
+int main(int argc, char **argv)
+{
+  struct ibv_pd *pd = ibv_alloc_pd(NULL);
+  return 0;
+}
+EOF
+if compile_prog "" "-libverbs" ; then
+    libverbs="yes"
+    LIBS="-libverbs $LIBS"
+fi
+
+##########################################
+# rdmacm probe
+rdmacm="no"
+cat > $TMPC << EOF
+#include <stdio.h>
+#include <rdma/rdma_cma.h>
+int main(int argc, char **argv)
+{
+  rdma_destroy_qp(NULL);
+  return 0;
+}
+EOF
+if compile_prog "" "-lrdmacm" ; then
+    rdmacm="yes"
+    LIBS="-lrdmacm $LIBS"
+fi
+
+##########################################
+# Linux fallocate probe
+linux_fallocate="no"
+cat > $TMPC << EOF
+#include <stdio.h>
+#include <linux/falloc.h>
+int main(int argc, char **argv)
+{
+  int r = fallocate(0, FALLOC_FL_KEEP_SIZE, 0, 1024);
+  return r;
+}
+EOF
+if compile_prog "" "" ; then
+    linux_fallocate="yes"
+fi
+
+##########################################
+# POSIX fallocate probe
+posix_fallocate="no"
+cat > $TMPC << EOF
+#include <stdio.h>
+#include <fcntl.h>
+int main(int argc, char **argv)
+{
+  int r = posix_fallocate(0, 0, 1024);
+  return r;
+}
+EOF
+if compile_prog "" "" ; then
+    posix_fallocate="yes"
+fi
+
+##########################################
+# clock_gettime probe
+clock_gettime="no"
+cat > $TMPC << EOF
+#include <stdio.h>
+#include <time.h>
+int main(int argc, char **argv)
+{
+  return clock_gettime(0, NULL);
+}
+EOF
+if compile_prog "" "" ; then
+    clock_gettime="yes"
+elif compile_prog "" "-lrt" ; then
+    clock_gettime="yes"
+    LIBS="-lrt $LIBS"
+fi
+
+##########################################
+# CLOCK_MONOTONIC probe
+clock_monotonic="no"
+if test "$clock_gettime" = "yes" ; then
+  cat > $TMPC << EOF
+#include <stdio.h>
+#include <time.h>
+int main(int argc, char **argv)
+{
+  return clock_gettime(CLOCK_MONOTONIC, NULL);
+}
+EOF
+  if compile_prog "" "$LIBS" ; then
+      clock_monotonic="yes"
+  fi
+fi
+
+echo "Linux AIO support\t$libaio"
+echo "Linux fallocate\t\t$linux_fallocate"
+echo "POSIX fallocate\t\t$posix_fallocate"
+echo "__sync_fetch_and add\t$sfaa"
+echo "libverbs\t\t$libverbs"
+echo "rdmacm\t\t\t$rdmacm"
+echo "clock_gettime\t\t$clock_gettime"
+echo "CLOCK_MONOTONIC\t\t$clock_monotonic"
+
+echo "# Automatically generated by configure - do not modify" > $config_host_mak
+printf "# Configured with:" >> $config_host_mak
+printf " '%s'" "$0" "$@" >> $config_host_mak
+echo >> $config_host_mak
+
+if test "$libaio" = "yes" ; then
+  echo "CONFIG_LIBAIO=y" >> $config_host_mak
+fi
+if test "$linux_fallocate" = "yes" ; then
+  echo "CONFIG_LINUX_FALLOCATE=y" >> $config_host_mak
+fi
+if test "$posix_fallocate" = "yes" ; then
+  echo "CONFIG_POSIX_FALLOCATE=y" >> $config_host_mak
+fi
+if test "$sfaa" = "yes" ; then
+  echo "CONFIG_SFAA=y" >> $config_host_mak
+fi
+if test "$libverbs" = "yes" -o "rdmacm" = "yes" ; then
+  echo "CONFIG_RDMA=y" >> $config_host_mak
+fi
+if test "$clock_gettime" = "yes" ; then
+  echo "CONFIG_CLOCK_GETTIME=y" >> $config_host_mak
+fi
+if test "$clock_monotonic" = "yes" ; then
+  echo "CONFIG_CLOCK_MONOTONIC=y" >> $config_host_mak
+fi
+
+echo "LIBS+=$LIBS" >> $config_host_mak

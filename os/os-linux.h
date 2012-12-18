@@ -21,7 +21,6 @@
 #include "binject.h"
 #include "../file.h"
 
-#define FIO_HAVE_LIBAIO
 #define FIO_HAVE_POSIXAIO
 #define FIO_HAVE_FADVISE
 #define FIO_HAVE_CPU_AFFINITY

@@ -11,6 +11,18 @@ PROGS	= fio
 SCRIPTS = fio_generate_plots
 UNAME  := $(shell uname)
 
+ifneq ($(wildcard config-host.mak),)
+all:
+include config-host.mak
+config-host-mak: ./configure
+	@echo $@ is out-of-date, running configure
+	@sed -n "/.*Configured with/s/[^:]*: //p" $@ | sh
+else
+config-host.mak:
+	@echo "Please call configure before running make!"
+	@exit 1
+endif
+
 SOURCE := gettime.c fio.c ioengines.c init.c stat.c log.c time.c filesetup.c \
 		eta.c verify.c memory.c io_u.c parse.c mutex.c options.c \
 		rbtree.c smalloc.c filehash.c profile.c debug.c lib/rand.c \
@@ -19,13 +31,22 @@ SOURCE := gettime.c fio.c ioengines.c init.c stat.c log.c time.c filesetup.c \
 		memalign.c server.c client.c iolog.c backend.c libfio.c flow.c \
 		json.c lib/zipf.c lib/axmap.c lib/lfsr.c gettime-thread.c
 
+ifdef CONFIG_LIBAIO
+  CFLAGS += -DFIO_HAVE_LIBAIO
+  SOURCE += engines/libaio.c
+endif
+ifdef CONFIG_RDMA
+  CFLAGS += -DFIO_HAVE_RDMA
+  SOURCE += engines/rdma.c
+endif
+
 ifeq ($(UNAME), Linux)
   SOURCE += diskutil.c fifo.c blktrace.c helpers.c cgroup.c trim.c \
-		engines/libaio.c engines/posixaio.c engines/sg.c \
+		engines/posixaio.c engines/sg.c \
 		engines/splice.c engines/syslet-rw.c engines/guasi.c \
 		engines/binject.c engines/rdma.c profiles/tiobench.c \
 		engines/fusion-aw.c engines/falloc.c engines/e4defrag.c
-  LIBS += -lpthread -ldl -lrt -laio
+  LIBS += -lpthread -ldl
   LDFLAGS += -rdynamic
 endif
 ifeq ($(UNAME), Android)
@@ -159,7 +180,7 @@ fio: $(OBJS)
 $(PROGS): .depend
 
 clean: FORCE
-	-rm -f .depend $(OBJS) $(T_OBJS) $(PROGS) $(T_PROGS) core.* core FIO-VERSION-FILE
+	-rm -f .depend $(OBJS) $(T_OBJS) $(PROGS) $(T_PROGS) core.* core FIO-VERSION-FILE config-host.mak config-host.ld
 
 cscope:
 	@cscope -b -R
