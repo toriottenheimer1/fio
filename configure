@@ -81,26 +81,42 @@ feature_not_found() {
 
 cc="${CC-${cross_prefix}gcc}"
 
-libaio="no"
-
 ##########################################
 # linux-aio probe
-if test "$linux_aio" != "no" ; then
-  cat > $TMPC <<EOF
+libaio="no"
+cat > $TMPC <<EOF
 #include <libaio.h>
-#include <sys/eventfd.h>
 #include <stddef.h>
-int main(void) { io_setup(0, NULL); io_set_eventfd(NULL, 0); eventfd(0, 0); return 0; }
+int main(void)
+{
+  io_setup(0, NULL);
+  return 0;
+}
 EOF
-  if compile_prog "" "-laio" ; then
-    libaio=yes
-    LIBS="-laio $LIBS"
-  else
-    if test "$libaio" = "yes" ; then
-      feature_not_found "linux AIO"
-    fi
-    libaio=no
+if compile_prog "" "-laio" ; then
+  libaio=yes
+  LIBS="-laio $LIBS"
+else
+  if test "$libaio" = "yes" ; then
+    feature_not_found "linux AIO"
   fi
+  libaio=no
+fi
+
+##########################################
+posix_aio="no"
+cat > $TMPC <<EOF
+#include <aio.h>
+int main(void)
+{
+  struct aiocb cb;
+  aio_read(&cb);
+  return 0;
+}
+EOF
+if compile_prog "" "-lrt" ; then
+  posix_aio=yes
+  LIBS="-lrt $LIBS"
 fi
 
 ##########################################
@@ -225,6 +241,7 @@ EOF
 fi
 
 echo "Linux AIO support\t$libaio"
+echo "POSIX AIO support\t$posix_aio"
 echo "Linux fallocate\t\t$linux_fallocate"
 echo "POSIX fallocate\t\t$posix_fallocate"
 echo "__sync_fetch_and add\t$sfaa"
