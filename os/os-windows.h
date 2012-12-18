@@ -22,7 +22,6 @@
 #define FIO_HAVE_WINDOWSAIO
 #define FIO_HAVE_FALLOCATE
 #define FIO_HAVE_GETTID
-#define FIO_HAVE_CLOCK_MONOTONIC
 #define FIO_HAVE_FADVISE
 #define FIO_USE_GENERIC_RAND
 
@@ -31,9 +30,6 @@
 #define FIO_OS_PATH_SEPARATOR		"\\"
 
 #define FIO_MAX_CPUS	MAXIMUM_PROCESSORS
-
-#define FIO_OS_HAVE_SOCKLEN_T
-typedef int fio_socklen_t;
 
 #define OS_MAP_ANON		MAP_ANON
 

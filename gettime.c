@@ -148,7 +148,7 @@ void fio_gettime(struct timeval *tp, void fio_unused *caller)
 	case CS_CGETTIME: {
 		struct timespec ts;
 
-#ifdef FIO_HAVE_CLOCK_MONOTONIC
+#ifdef CONFIG_CLOCK_MONOTONIC
 		if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0) {
 #else
 		if (clock_gettime(CLOCK_REALTIME, &ts) < 0) {

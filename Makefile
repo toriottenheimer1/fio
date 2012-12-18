@@ -31,6 +31,13 @@ SOURCE := gettime.c fio.c ioengines.c init.c stat.c log.c time.c filesetup.c \
 		memalign.c server.c client.c iolog.c backend.c libfio.c flow.c \
 		json.c lib/zipf.c lib/axmap.c lib/lfsr.c gettime-thread.c
 
+ifdef CONFIG_64BIT
+  CFLAGS += -DBITS_PER_LONG=64
+endif
+ifdef CONFIG_32BIT
+  CFLAGS += -DBITS_PER_LONG=32
+endif
+
 ifdef CONFIG_LIBAIO
   CFLAGS += -DCONFIG_LIBAIO
   SOURCE += engines/libaio.c
@@ -43,25 +50,40 @@ ifdef CONFIG_POSIXAIO
   CFLAGS += -DCONFIG_POSIXAIO
   SOURCE += engines/posixaio.c
 endif
+ifdef CONFIG_LINUX_FALLOCATE
+  SOURCE += engines/falloc.c
+endif
+ifdef CONFIG_LINUX_EXT4_MOVE_EXTENT
+  SOURCE += engines/e4defrag.c
+endif
+ifdef CONFIG_LINUX_SPLICE
+  CFLAGS += -DCONFIG_LINUX_SPLICE
+  SOURCE += engines/splice.c
+endif
 
 ifndef CONFIG_STRSEP
   CFLAGS += -DCONFIG_STRSEP
   SOURCE += lib/strsep.c
 endif
+ifdef CONFIG_POSIXAIO_FSYNC
+  CFLAGS += -DCONFIG_POSIXAIO_FSYNC
+endif
+ifdef CONFIG_CLOCK_MONOTONIC
+  CFLAGS += -DCONFIG_CLOCK_MONOTONIC
+endif
+ifdef CONFIG_SOCKLEN_T
+  CFLAGS += -DCONFIG_SOCKLEN_T
+endif
 
 ifeq ($(UNAME), Linux)
   SOURCE += diskutil.c fifo.c blktrace.c helpers.c cgroup.c trim.c \
-		engines/sg.c engines/splice.c engines/syslet-rw.c \
-		engines/guasi.c engines/binject.c engines/rdma.c \
-		profiles/tiobench.c engines/fusion-aw.c engines/falloc.c \
-		engines/e4defrag.c
+		engines/sg.c engines/syslet-rw.c engines/guasi.c \
+		engines/binject.c profiles/tiobench.c engines/fusion-aw.c
   LIBS += -lpthread -ldl
   LDFLAGS += -rdynamic
 endif
 ifeq ($(UNAME), Android)
-  SOURCE += diskutil.c fifo.c blktrace.c helpers.c trim.c \
-		engines/splice.c profiles/tiobench.c engines/falloc.c \
-		engines/e4defrag.c
+  SOURCE += diskutil.c fifo.c blktrace.c helpers.c trim.c profiles/tiobench.c
   LIBS += -ldl
   LDFLAGS += -rdynamic
   CPPFLAGS += -DFIO_NO_HAVE_SHM_H

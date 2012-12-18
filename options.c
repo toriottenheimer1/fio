@@ -1295,7 +1295,7 @@ static struct fio_option options[FIO_MAX_OPTS] = {
 			  { .ival = "mmap",
 			    .help = "Memory mapped IO"
 			  },
-#ifdef FIO_HAVE_SPLICE
+#ifdef CONFIG_LINUX_SPLICE
 			  { .ival = "splice",
 			    .help = "splice/vmsplice based IO",
 			  },
@@ -1332,7 +1332,7 @@ static struct fio_option options[FIO_MAX_OPTS] = {
 			    .help = "binject direct inject block engine",
 			  },
 #endif
-#ifdef FIO_HAVE_RDMA
+#ifdef CONFIG_RDMA
 			  { .ival = "rdma",
 			    .help = "RDMA IO engine",
 			  },

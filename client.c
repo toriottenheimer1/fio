@@ -267,7 +267,7 @@ int fio_client_add(const char *hostname, void **cookie)
 static int fio_client_connect_ip(struct fio_client *client)
 {
 	struct sockaddr *addr;
-	fio_socklen_t socklen;
+	socklen_t socklen;
 	int fd, domain;
 
 	if (client->ipv6) {
@@ -304,7 +304,7 @@ static int fio_client_connect_ip(struct fio_client *client)
 static int fio_client_connect_sock(struct fio_client *client)
 {
 	struct sockaddr_un *addr = &client->addr_un;
-	fio_socklen_t len;
+	socklen_t len;
 	int fd;
 
 	memset(addr, 0, sizeof(*addr));

@@ -112,12 +112,6 @@ typedef unsigned long os_cpu_mask_t;
 #define OS_RAND_MAX			RAND_MAX
 #endif
 
-#ifdef FIO_HAVE_CLOCK_MONOTONIC
-#define FIO_TIMER_CLOCK CLOCK_MONOTONIC
-#else
-#define FIO_TIMER_CLOCK CLOCK_REALTIME
-#endif
-
 #ifndef FIO_HAVE_RAWBIND
 #define fio_lookup_raw(dev, majdev, mindev)	1
 #endif
@@ -138,8 +132,8 @@ typedef unsigned long os_cpu_mask_t;
 #define FIO_MAX_JOBS		2048
 #endif
 
-#ifndef FIO_OS_HAVE_SOCKLEN_T
-typedef socklen_t fio_socklen_t;
+#ifndef CONFIG_SOCKLEN_T
+typedef unsigned int socklen_t;
 #endif
 
 #ifndef FIO_OS_HAS_CTIME_R

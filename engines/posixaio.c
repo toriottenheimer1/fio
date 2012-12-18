@@ -171,7 +171,7 @@ static int fio_posixaio_queue(struct thread_data *td,
 		do_io_u_trim(td, io_u);
 		return FIO_Q_COMPLETED;
 	} else {
-#ifdef FIO_HAVE_POSIXAIO_FSYNC
+#ifdef CONFIG_POSIXAIO_FSYNC
 		ret = aio_fsync(O_SYNC, aiocb);
 #else
 		if (pd->queued)
