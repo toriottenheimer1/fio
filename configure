@@ -160,6 +160,26 @@ fi
 echo "POSIX AIO fsync               $posix_aio_fsync"
 
 ##########################################
+# solaris aio probe
+solaris_aio="no"
+cat > $TMPC <<EOF
+#include <sys/types.h>
+#include <sys/asynch.h>
+#include <unistd.h>
+int main(void)
+{
+  aio_result_t res;
+  return aioread(0, NULL, 0, 0, SEEK_SET, &res);
+  return 0;
+}
+EOF
+if compile_prog "" "-laio" ; then
+  solaris_aio=yes
+  LIBS="-laio $LIBS"
+fi
+echo "Solaris AIO support           $solaris_aio"
+
+##########################################
 # __sync_fetch_and_and test
 sfaa="no"
 cat > $TMPC << EOF
@@ -567,6 +587,9 @@ if test "$fusion_aw" = "yes" ; then
 fi
 if test "$libnuma" = "yes" ; then
   echo "CONFIG_LIBNUMA=y" >> $config_host_mak
+fi
+if test "$solaris_aio" = "yes" ; then
+  echo "CONFIG_SOLARISAIO=y" >> $config_host_mak
 fi
 
 echo "LIBS+=$LIBS" >> $config_host_mak

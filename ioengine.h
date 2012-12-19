@@ -38,7 +38,7 @@ struct io_u {
 #ifdef CONFIG_GUASI
 		guasi_req_t greq;
 #endif
-#ifdef FIO_HAVE_SOLARISAIO
+#ifdef CONFIG_SOLARISAIO
 		aio_result_t resultp;
 #endif
 #ifdef FIO_HAVE_BINJECT

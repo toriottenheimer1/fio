@@ -68,6 +68,10 @@ ifdef CONFIG_FUSION_AW
   CFLAGS += -DCONFIG_FUSION_AW
   SOURCE += engines/fusion-aw.c
 endif
+ifdef CONFIG_SOLARISAIO
+  CFLAGS += -DCONFIG_SOLARISAIO
+  SOURCE += engines/solarisaio.c
+endif
 
 ifndef CONFIG_STRSEP
   CFLAGS += -DCONFIG_STRSEP
@@ -118,7 +122,7 @@ ifeq ($(UNAME), Android)
   CPPFLAGS += -DFIO_NO_HAVE_SHM_H
 endif
 ifeq ($(UNAME), SunOS)
-  SOURCE += fifo.c helpers.c engines/solarisaio.c
+  SOURCE += fifo.c helpers.c
   LIBS	 += -lpthread -ldl -laio -lrt -lnsl -lsocket
   CPPFLAGS += -D__EXTENSIONS__
 endif
