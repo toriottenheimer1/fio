@@ -1314,11 +1314,6 @@ static struct fio_option options[FIO_MAX_OPTS] = {
 			  { .ival = "net",
 			    .help = "Network IO",
 			  },
-#ifdef FIO_HAVE_SYSLET
-			  { .ival = "syslet-rw",
-			    .help = "syslet enabled async pread/pwrite IO",
-			  },
-#endif
 			  { .ival = "cpuio",
 			    .help = "CPU cycle burner engine",
 			  },
