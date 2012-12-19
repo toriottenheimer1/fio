@@ -96,6 +96,7 @@ EOF
 if compile_prog "" "" ; then
   wordsize=$($TMPE)
 fi
+echo "Wordsize                      $wordsize"
 
 ##########################################
 # linux-aio probe
@@ -118,6 +119,7 @@ else
   fi
   libaio=no
 fi
+echo "Linux AIO support             $libaio"
 
 ##########################################
 # posix aio probe
@@ -135,6 +137,7 @@ if compile_prog "" "-lrt" ; then
   posix_aio=yes
   LIBS="-lrt $LIBS"
 fi
+echo "POSIX AIO support             $posix_aio"
 
 ##########################################
 # posix aio fsync probe
@@ -154,6 +157,7 @@ EOF
     posix_aio_fsync=yes
   fi
 fi
+echo "POSIX AIO fsync               $posix_aio_fsync"
 
 ##########################################
 # __sync_fetch_and_and test
@@ -174,6 +178,7 @@ EOF
 if compile_prog "" "" ; then
     sfaa="yes"
 fi
+echo "__sync_fetch_and add          $sfaa"
 
 ##########################################
 # libverbs probe
@@ -191,6 +196,7 @@ if compile_prog "" "-libverbs" ; then
     libverbs="yes"
     LIBS="-libverbs $LIBS"
 fi
+echo "libverbs                      $libverbs"
 
 ##########################################
 # rdmacm probe
@@ -208,6 +214,7 @@ if compile_prog "" "-lrdmacm" ; then
     rdmacm="yes"
     LIBS="-lrdmacm $LIBS"
 fi
+echo "rdmacm                        $rdmacm"
 
 ##########################################
 # Linux fallocate probe
@@ -224,6 +231,7 @@ EOF
 if compile_prog "" "" ; then
     linux_fallocate="yes"
 fi
+echo "Linux fallocate               $linux_fallocate"
 
 ##########################################
 # POSIX fadvise probe
@@ -240,6 +248,7 @@ EOF
 if compile_prog "" "" ; then
     posix_fadvise="yes"
 fi
+echo "POSIX fadvise                 $posix_fadvise"
 
 ##########################################
 # sched_set/getaffinity 2 or 3 argument test
@@ -270,6 +279,8 @@ EOF
     linux_2arg_affinity="yes"
   fi
 fi
+echo "sched_setaffinity(3 arg)      $linux_3arg_affinity"
+echo "sched_setaffinity(2 arg)      $linux_2arg_affinity"
 
 ##########################################
 # POSIX fallocate probe
@@ -286,7 +297,7 @@ EOF
 if compile_prog "" "" ; then
     posix_fallocate="yes"
 fi
-
+echo "POSIX fallocate               $posix_fallocate"
 
 ##########################################
 # clock_gettime probe
@@ -305,6 +316,7 @@ elif compile_prog "" "-lrt" ; then
     clock_gettime="yes"
     LIBS="-lrt $LIBS"
 fi
+echo "clock_gettime                 $clock_gettime"
 
 ##########################################
 # CLOCK_MONOTONIC probe
@@ -322,6 +334,7 @@ EOF
       clock_monotonic="yes"
   fi
 fi
+echo "CLOCK_MONOTONIC               $clock_monotonic"
 
 ##########################################
 # fdatasync() probe
@@ -337,6 +350,7 @@ EOF
 if compile_prog "" "" ; then
   fdatasync="yes"
 fi
+echo "fdatasync                     $fdatasync"
 
 ##########################################
 # ext4 move extent probe
@@ -353,6 +367,7 @@ EOF
 if compile_prog "" "" ; then
   ext4_me="yes"
 fi
+echo "EXT4 move extent              $ext4_me"
 
 ##########################################
 # splice probe
@@ -369,6 +384,7 @@ EOF
 if compile_prog "" "" ; then
   linux_splice="yes"
 fi
+echo "Linux splice(2)               $linux_splice"
 
 ##########################################
 # GUASI probe
@@ -385,6 +401,7 @@ EOF
 if compile_prog "" "" ; then
   guasi="yes"
 fi
+echo "GUASI                         $guasi"
 
 ##########################################
 # fusion-aw probe
@@ -400,6 +417,7 @@ EOF
 if compile_prog "" "" ; then
   fusion_aw="yes"
 fi
+echo "Fusion-io atomic engine       $fusion_aw"
 
 ##########################################
 # strsep() probe
@@ -415,6 +433,7 @@ EOF
 if compile_prog "" "" ; then
   strsep="yes"
 fi
+echo "strsep                        $strsep"
 
 ##########################################
 # socklen_t probe
@@ -431,30 +450,9 @@ EOF
 if compile_prog "" "" ; then
   socklen_t="yes"
 fi
+echo "socklen_t                     $socklen_t"
 
 #############################################################################
-
-echo "Wordsize                      $wordsize"
-echo "Linux AIO support             $libaio"
-echo "POSIX AIO support             $posix_aio"
-echo "POSIX AIO fsync               $posix_aio_fsync"
-echo "Linux fallocate               $linux_fallocate"
-echo "POSIX fallocate               $posix_fallocate"
-echo "POSIX fadvise                 $posix_fadvise"
-echo "fdatasync                     $fdatasync"
-echo "EXT4 move extent              $ext4_me"
-echo "__sync_fetch_and add          $sfaa"
-echo "libverbs                      $libverbs"
-echo "rdmacm                        $rdmacm"
-echo "clock_gettime                 $clock_gettime"
-echo "CLOCK_MONOTONIC               $clock_monotonic"
-echo "sched_setaffinity(3 arg)      $linux_3arg_affinity"
-echo "sched_setaffinity(2 arg)      $linux_2arg_affinity"
-echo "Linux splice(2)               $linux_splice"
-echo "GUASI                         $guasi"
-echo "Fusion-io atomic engine       $fusion_aw"
-echo "strsep                        $strsep"
-echo "socklen_t                     $socklen_t"
 
 echo "# Automatically generated by configure - do not modify" > $config_host_mak
 printf "# Configured with:" >> $config_host_mak
