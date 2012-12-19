@@ -114,6 +114,9 @@ endif
 ifdef CONFIG_LIBNUMA
   CFLAGS += -DCONFIG_LIBNUMA
 endif
+ifdef CONFIG_TLS_THREAD
+  CFLAGS += -DCONFIG_TLS_THREAD
+endif
 
 ifeq ($(UNAME), Linux)
   SOURCE += diskutil.c fifo.c blktrace.c helpers.c cgroup.c trim.c \

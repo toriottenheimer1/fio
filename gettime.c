@@ -23,7 +23,11 @@ struct tv_valid {
 	int last_tv_valid;
 	unsigned long last_cycles;
 };
+#ifdef CONFIG_TLS_THREAD
+static struct tv_valid __thread static_tv_valid;
+#else
 static pthread_key_t tv_tls_key;
+#endif
 
 enum fio_cs fio_clock_source = FIO_PREFERRED_CLOCK_SOURCE;
 int fio_clock_source_set = 0;
@@ -139,7 +143,11 @@ void fio_gettime(struct timeval *tp, void fio_unused *caller)
 		return;
 	}
 
+#ifdef CONFIG_TLS_THREAD
+	tv = &static_tv_valid;
+#else
 	tv = pthread_getspecific(tv_tls_key);
+#endif
 
 	switch (fio_clock_source) {
 	case CS_GTOD:
@@ -272,6 +280,7 @@ static void calibrate_cpu_clock(void)
 }
 #endif
 
+#ifndef CONFIG_TLS_THREAD
 void fio_local_clock_init(int is_thread)
 {
 	struct tv_valid *t;
@@ -285,14 +294,21 @@ static void kill_tv_tls_key(void *data)
 {
 	free(data);
 }
+#else
+void fio_local_clock_init(int is_thread)
+{
+}
+#endif
 
 void fio_clock_init(void)
 {
 	if (fio_clock_source == fio_clock_source_inited)
 		return;
 
+#ifndef CONFIG_TLS_THREAD
 	if (pthread_key_create(&tv_tls_key, kill_tv_tls_key))
 		log_err("fio: can't create TLS key\n");
+#endif
 
 	fio_clock_source_inited = fio_clock_source;
 	calibrate_cpu_clock();
