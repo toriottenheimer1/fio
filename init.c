@@ -569,7 +569,7 @@ static int fixup_options(struct thread_data *td)
 		}
 	}
 
-#ifndef FIO_HAVE_FDATASYNC
+#ifndef CONFIG_FDATASYNC
 	if (o->fdatasync_blocks) {
 		log_info("fio: this platform does not support fdatasync()"
 			 " falling back to using fsync().  Use the 'fsync'"

@@ -51,7 +51,7 @@ int _weak sync_file_range(int fd, off64_t offset, off64_t nbytes,
 }
 #endif
 
-#ifndef FIO_HAVE_FADVISE
+#ifndef CONFIG_FADVISE
 int _weak posix_fadvise(int fd, off_t offset, off_t len, int advice)
 {
 	return 0;

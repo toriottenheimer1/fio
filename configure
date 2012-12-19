@@ -482,6 +482,9 @@ fi
 if test "$posix_fallocate" = "yes" ; then
   echo "CONFIG_POSIX_FALLOCATE=y" >> $config_host_mak
 fi
+if test "$fdatasync" = "yes" ; then
+  echo "CONFIG_FDATASYNC=y" >> $config_host_mak
+fi
 if test "$sfaa" = "yes" ; then
   echo "CONFIG_SFAA=y" >> $config_host_mak
 fi

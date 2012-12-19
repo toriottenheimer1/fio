@@ -21,7 +21,6 @@
 #include "binject.h"
 #include "../file.h"
 
-#define FIO_HAVE_FADVISE
 #define FIO_HAVE_CPU_AFFINITY
 #define FIO_HAVE_DISK_UTIL
 #define FIO_HAVE_SGIO
@@ -34,7 +33,6 @@
 #define FIO_HAVE_PSHARED_MUTEX
 #define FIO_HAVE_CL_SIZE
 #define FIO_HAVE_CGROUPS
-#define FIO_HAVE_FDATASYNC
 #define FIO_HAVE_FS_STAT
 #define FIO_HAVE_TRIM
 #define FIO_HAVE_BINJECT
@@ -58,14 +56,6 @@
 typedef cpu_set_t os_cpu_mask_t;
 
 typedef struct drand48_data os_random_state_t;
-
-/*
- * we want fadvise64 really, but it's so tangled... later
- */
-#ifdef FIO_HAVE_FADVISE
-#define fadvise(fd, off, len, advice)	\
-	posix_fadvise((fd), (off_t)(off), (len), (advice))
-#endif
 
 /*
  * If you are on an ancient glibc (2.3.2), then define GLIBC_2_3_2 if you want

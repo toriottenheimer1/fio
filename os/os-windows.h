@@ -22,7 +22,6 @@
 #define FIO_HAVE_WINDOWSAIO
 #define FIO_HAVE_FALLOCATE
 #define FIO_HAVE_GETTID
-#define FIO_HAVE_FADVISE
 #define FIO_USE_GENERIC_RAND
 
 #define FIO_PREFERRED_ENGINE		"windowsaio"
