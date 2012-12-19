@@ -80,6 +80,125 @@ feature_not_found() {
   exit 1;
 }
 
+check_define() {
+  cat > $TMPC <<EOF
+#if !defined($1)
+#error $1 not defined
+#endif
+int main(void)
+{
+  return 0;
+}
+EOF
+  compile_object
+}
+
+targetos=""
+cpu=""
+
+if check_define __linux__ ; then
+  targetos="Linux"
+elif check_define _WIN32 ; then
+  targetos='MINGW32'
+elif check_define __OpenBSD__ ; then
+  targetos='OpenBSD'
+elif check_define __sun__ ; then
+  targetos='SunOS'
+else
+  targetos=`uname -s`
+fi
+
+# Some host OSes need non-standard checks for which CPU to use.
+# Note that these checks are broken for cross-compilation: if you're
+# cross-compiling to one of these OSes then you'll need to specify
+# the correct CPU with the --cpu option.
+case $targetos in
+Darwin)
+  # on Leopard most of the system is 32-bit, so we have to ask the kernel if
+  # we can run 64-bit userspace code.
+  # If the user didn't specify a CPU explicitly and the kernel says this is
+  # 64 bit hw, then assume x86_64. Otherwise fall through to the usual
+  # detection code.
+  if test -z "$cpu" && test "$(sysctl -n hw.optional.x86_64)" = "1"; then
+    cpu="x86_64"
+  fi
+  ;;
+SunOS)
+  # `uname -m` returns i86pc even on an x86_64 box, so default based on isainfo
+  if test -z "$cpu" && test "$(isainfo -k)" = "amd64"; then
+    cpu="x86_64"
+  fi
+esac
+
+if test ! -z "$cpu" ; then
+  # command line argument
+  :
+elif check_define __i386__ ; then
+  cpu="i386"
+elif check_define __x86_64__ ; then
+  cpu="x86_64"
+elif check_define __sparc__ ; then
+  if check_define __arch64__ ; then
+    cpu="sparc64"
+  else
+    cpu="sparc"
+  fi
+elif check_define _ARCH_PPC ; then
+  if check_define _ARCH_PPC64 ; then
+    cpu="ppc64"
+  else
+    cpu="ppc"
+  fi
+elif check_define __mips__ ; then
+  cpu="mips"
+elif check_define __ia64__ ; then
+  cpu="ia64"
+elif check_define __s390__ ; then
+  if check_define __s390x__ ; then
+    cpu="s390x"
+  else
+    cpu="s390"
+  fi
+elif check_define __arm__ ; then
+  cpu="arm"
+elif check_define __hppa__ ; then
+  cpu="hppa"
+else
+  cpu=`uname -m`
+fi
+
+# Normalise host CPU name and set ARCH.
+case "$cpu" in
+  ia64|ppc|ppc64|s390|s390x|sparc64)
+    cpu="$cpu"
+  ;;
+  i386|i486|i586|i686|i86pc|BePC)
+    cpu="i386"
+  ;;
+  x86_64|amd64)
+    cpu="x86_64"
+  ;;
+  armv*b|armv*l|arm)
+    cpu="arm"
+  ;;
+  hppa|parisc|parisc64)
+    cpu="hppa"
+  ;;
+  mips*)
+    cpu="mips"
+  ;;
+  sparc|sun4[cdmuv])
+    cpu="sparc"
+  ;;
+  *)
+    echo "Unknown CPU"
+    exit 1;
+  ;;
+esac
+
+echo "OS is                         $targetos"
+echo "CPU is                        $cpu"
+
 cc="${CC-${cross_prefix}gcc}"
 
 ##########################################
