@@ -60,6 +60,10 @@ ifdef CONFIG_LINUX_SPLICE
   CFLAGS += -DCONFIG_LINUX_SPLICE
   SOURCE += engines/splice.c
 endif
+ifdef CONFIG_GUASI
+  CFLAGS += -DCONFIG_GUASI
+  SOURCE += engines/guasi.c
+endif
 
 ifndef CONFIG_STRSEP
   CFLAGS += -DCONFIG_STRSEP
@@ -80,8 +84,8 @@ endif
 
 ifeq ($(UNAME), Linux)
   SOURCE += diskutil.c fifo.c blktrace.c helpers.c cgroup.c trim.c \
-		engines/sg.c engines/syslet-rw.c engines/guasi.c \
-		engines/binject.c profiles/tiobench.c engines/fusion-aw.c
+		engines/sg.c engines/syslet-rw.c engines/binject.c \
+		profiles/tiobench.c engines/fusion-aw.c
   LIBS += -lpthread -ldl
   LDFLAGS += -rdynamic
 endif

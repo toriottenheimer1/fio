@@ -1322,7 +1322,7 @@ static struct fio_option options[FIO_MAX_OPTS] = {
 			  { .ival = "cpuio",
 			    .help = "CPU cycle burner engine",
 			  },
-#ifdef FIO_HAVE_GUASI
+#ifdef CONFIG_GUASI
 			  { .ival = "guasi",
 			    .help = "GUASI IO engine",
 			  },

@@ -4,6 +4,9 @@
 #ifdef CONFIG_LIBAIO
 #include <libaio.h>
 #endif
+#ifdef CONFIG_GUASI
+#include <guasi.h>
+#endif
 
 #define FIO_IOOPS_VERSION	14
 
@@ -32,7 +35,7 @@ struct io_u {
 #ifdef FIO_HAVE_SGIO
 		struct sg_io_hdr hdr;
 #endif
-#ifdef FIO_HAVE_GUASI
+#ifdef CONFIG_GUASI
 		guasi_req_t greq;
 #endif
 #ifdef FIO_HAVE_SOLARISAIO

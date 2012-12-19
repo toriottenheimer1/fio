@@ -371,6 +371,22 @@ if compile_prog "" "" ; then
 fi
 
 ##########################################
+# GUASI probe
+guasi="no"
+cat > $TMPC << EOF
+#include <guasi.h>
+#include <guasi_syscalls.h>
+int main(int argc, char **argv)
+{
+  guasi_t ctx = guasi_create(0, 0, 0);
+  return 0;
+}
+EOF
+if compile_prog "" "" ; then
+  guasi="yes"
+fi
+
+##########################################
 # strsep() probe
 strsep="no"
 cat > $TMPC << EOF
@@ -420,6 +436,7 @@ echo "CLOCK_MONOTONIC               $clock_monotonic"
 echo "sched_setaffinity(3 arg)      $linux_3arg_affinity"
 echo "sched_setaffinity(2 arg)      $linux_2arg_affinity"
 echo "Linux splice(2)               $linux_splice"
+echo "GUASI                         $guasi"
 echo "strsep                        $strsep"
 echo "socklen_t                     $socklen_t"
 
@@ -485,6 +502,9 @@ if test "$ext4_me" = "yes" ; then
 fi
 if test "$linux_splice" = "yes" ; then
   echo "CONFIG_LINUX_SPLICE=y" >> $config_host_mak
+fi
+if test "$guasi" = "yes" ; then
+  echo "CONFIG_GUASI=y" >> $config_host_mak
 fi
 
 echo "LIBS+=$LIBS" >> $config_host_mak
