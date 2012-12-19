@@ -560,9 +560,6 @@ fi
 if test "$posix_fadvise" = "yes" ; then
   echo "CONFIG_POSIX_FADVISE=y" >> $config_host_mak
 fi
-if test "$posix_fallocate" = "yes" ; then
-  echo "CONFIG_POSIX_FALLOCATE=y" >> $config_host_mak
-fi
 if test "$linux_3arg_affinity" = "yes" ; then
   echo "CONFIG_3ARG_AFFINITY=y" >> $config_host_mak
 elif test "$linux_2arg_affinity" = "yes" ; then
