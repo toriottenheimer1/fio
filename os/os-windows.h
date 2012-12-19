@@ -93,7 +93,6 @@ struct sigaction
 	void* (*sa_sigaction)(int, siginfo_t *, void*);
 };
 
-char *strsep(char **stringp, const char *delim);
 long sysconf(int name);
 
 int kill(pid_t pid, int sig);
