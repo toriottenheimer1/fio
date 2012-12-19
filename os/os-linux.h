@@ -49,10 +49,6 @@
 
 #define OS_MAP_ANON		MAP_ANONYMOUS
 
-#ifndef CLOCK_MONOTONIC
-#define CLOCK_MONOTONIC 1
-#endif
-
 typedef cpu_set_t os_cpu_mask_t;
 
 typedef struct drand48_data os_random_state_t;
