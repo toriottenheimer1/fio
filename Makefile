@@ -91,6 +91,15 @@ endif
 ifdef CONFIG_FDATASYNC
   CFLAGS += -DCONFIG_FDATASYNC
 endif
+ifdef CONFIG_3ARG_AFFINITY
+  CFLAGS += -DCONFIG_3ARG_AFFINITY
+endif
+ifdef CONFIG_2ARG_AFFINITY
+  CFLAGS += -DCONFIG_2ARG_AFFINITY
+endif
+ifdef CONFIG_SYNC_FILE_RANGE
+  CFLAGS += -DCONFIG_SYNC_FILE_RANGE
+endif
 
 ifeq ($(UNAME), Linux)
   SOURCE += diskutil.c fifo.c blktrace.c helpers.c cgroup.c trim.c \

@@ -43,26 +43,18 @@
 #define FIO_HAVE_MMAP_HUGE
 #endif
 
-#ifdef SYNC_FILE_RANGE_WAIT_BEFORE
-#define FIO_HAVE_SYNC_FILE_RANGE
-#endif
-
 #define OS_MAP_ANON		MAP_ANONYMOUS
 
 typedef cpu_set_t os_cpu_mask_t;
 
 typedef struct drand48_data os_random_state_t;
 
-/*
- * If you are on an ancient glibc (2.3.2), then define GLIBC_2_3_2 if you want
- * the affinity helpers to work.
- */
-#ifndef GLIBC_2_3_2
+#ifdef CONFIG_3ARG_AFFINITY
 #define fio_setaffinity(pid, cpumask)		\
 	sched_setaffinity((pid), sizeof(cpumask), &(cpumask))
 #define fio_getaffinity(pid, ptr)	\
 	sched_getaffinity((pid), sizeof(cpu_set_t), (ptr))
-#else
+#elif defined(CONFIG_2ARG_AFFINITY)
 #define fio_setaffinity(pid, cpumask)	\
 	sched_setaffinity((pid), &(cpumask))
 #define fio_getaffinity(pid, ptr)	\

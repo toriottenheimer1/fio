@@ -353,6 +353,26 @@ fi
 echo "fdatasync                     $fdatasync"
 
 ##########################################
+# sync_file_range() probe
+sync_file_range="no"
+cat > $TMPC << EOF
+#include <stdio.h>
+#include <unistd.h>
+#define _GNU_SOURCE
+#include <fcntl.h>
+int main(int argc, char **argv)
+{
+  unsigned int flags = SYNC_FILE_RANGE_WAIT_BEFORE | SYNC_FILE_RANGE_WRITE |
+			SYNC_FILE_RANGE_WAIT_AFTER;
+  return sync_file_range(0, 0, 0, flags);
+}
+EOF
+if compile_prog "" "" ; then
+  sync_file_range="yes"
+fi
+echo "sync_file_range               $fdatasync"
+
+##########################################
 # ext4 move extent probe
 ext4_me="no"
 cat > $TMPC << EOF
@@ -484,6 +504,9 @@ if test "$posix_fallocate" = "yes" ; then
 fi
 if test "$fdatasync" = "yes" ; then
   echo "CONFIG_FDATASYNC=y" >> $config_host_mak
+fi
+if test "$sync_file_range" = "yes" ; then
+  echo "CONFIG_SYNC_FILE_RANGE=y" >> $config_host_mak
 fi
 if test "$sfaa" = "yes" ; then
   echo "CONFIG_SFAA=y" >> $config_host_mak

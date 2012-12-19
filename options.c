@@ -713,7 +713,7 @@ static int str_fst_cb(void *data, const char *str)
 	return 0;
 }
 
-#ifdef FIO_HAVE_SYNC_FILE_RANGE
+#ifdef CONFIG_SYNC_FILE_RANGE
 static int str_sfr_cb(void *data, const char *str)
 {
 	struct thread_data *td = data;
@@ -1650,7 +1650,7 @@ static struct fio_option options[FIO_MAX_OPTS] = {
 		.help	= "Make every Nth write a barrier write",
 		.def	= "0",
 	},
-#ifdef FIO_HAVE_SYNC_FILE_RANGE
+#ifdef CONFIG_SYNC_FILE_RANGE
 	{
 		.name	= "sync_file_range",
 		.posval	= {
