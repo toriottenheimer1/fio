@@ -66,6 +66,7 @@ compile_object() {
 compile_prog() {
   local_cflags="$1"
   local_ldflags="$2"
+  echo "Compiling test case $3" >> config.log
   do_cc $QEMU_CFLAGS $local_cflags -o $TMPE $TMPC $LDFLAGS $local_ldflags
 }
 
@@ -93,7 +94,7 @@ int main(void)
   return 0;
 }
 EOF
-if compile_prog "" "" ; then
+if compile_prog "" "" "wordsize"; then
   wordsize=$($TMPE)
 fi
 echo "Wordsize                      $wordsize"
@@ -110,7 +111,7 @@ int main(void)
   return 0;
 }
 EOF
-if compile_prog "" "-laio" ; then
+if compile_prog "" "-laio" "libaio" ; then
   libaio=yes
   LIBS="-laio $LIBS"
 else
@@ -134,9 +135,9 @@ int main(void)
   return 0;
 }
 EOF
-if compile_prog "" "" ; then
+if compile_prog "" "" "posixaio" ; then
   posix_aio="yes"
-elif compile_prog "" "-lrt" ; then
+elif compile_prog "" "-lrt" "posixaio"; then
   posix_aio="yes"
   posix_aio_lrt="yes"
   LIBS="-lrt $LIBS"
@@ -158,7 +159,7 @@ int main(void)
   return 0;
 }
 EOF
-  if compile_prog "" "$LIBS" ; then
+  if compile_prog "" "$LIBS" "posix_aio_fsync" ; then
     posix_aio_fsync=yes
   fi
 fi
@@ -178,7 +179,7 @@ int main(void)
   return 0;
 }
 EOF
-if compile_prog "" "-laio" ; then
+if compile_prog "" "-laio" "solarisaio" ; then
   solaris_aio=yes
   LIBS="-laio $LIBS"
 fi
@@ -200,7 +201,7 @@ int main(int argc, char **argv)
   return val;
 }
 EOF
-if compile_prog "" "" ; then
+if compile_prog "" "" "__sync_fetch_and_add()" ; then
     sfaa="yes"
 fi
 echo "__sync_fetch_and add          $sfaa"
@@ -217,7 +218,7 @@ int main(int argc, char **argv)
   return 0;
 }
 EOF
-if compile_prog "" "-libverbs" ; then
+if compile_prog "" "-libverbs" "libverbs" ; then
     libverbs="yes"
     LIBS="-libverbs $LIBS"
 fi
@@ -235,7 +236,7 @@ int main(int argc, char **argv)
   return 0;
 }
 EOF
-if compile_prog "" "-lrdmacm" ; then
+if compile_prog "" "-lrdmacm" "rdma"; then
     rdmacm="yes"
     LIBS="-lrdmacm $LIBS"
 fi
@@ -253,7 +254,7 @@ int main(int argc, char **argv)
   return r;
 }
 EOF
-if compile_prog "" "" ; then
+if compile_prog "" "" "linux_fallocate"; then
     linux_fallocate="yes"
 fi
 echo "Linux fallocate               $linux_fallocate"
@@ -270,7 +271,7 @@ int main(int argc, char **argv)
   return r;
 }
 EOF
-if compile_prog "" "" ; then
+if compile_prog "" "" "posix_fadvise"; then
     posix_fadvise="yes"
 fi
 echo "POSIX fadvise                 $posix_fadvise"
@@ -287,7 +288,7 @@ int main(int argc, char **argv)
   return r;
 }
 EOF
-if compile_prog "" "" ; then
+if compile_prog "" "" "posix_fallocate"; then
     posix_fallocate="yes"
 fi
 echo "POSIX fallocate               $posix_fallocate"
@@ -305,7 +306,7 @@ int main(int argc, char **argv)
   return sched_setaffinity(0, sizeof(mask), &mask);
 }
 EOF
-if compile_prog "" "" ; then
+if compile_prog "" "" "sched_setaffinity(,,)"; then
   linux_3arg_affinity="yes"
 else
   cat > $TMPC << EOF
@@ -317,7 +318,7 @@ int main(int argc, char **argv)
   return sched_setaffinity(0, &mask);
 }
 EOF
-  if compile_prog "" "" ; then
+  if compile_prog "" "" "sched_setaffinity(,)"; then
     linux_2arg_affinity="yes"
   fi
 fi
@@ -335,9 +336,9 @@ int main(int argc, char **argv)
   return clock_gettime(0, NULL);
 }
 EOF
-if compile_prog "" "" ; then
+if compile_prog "" "" "clock_gettime"; then
     clock_gettime="yes"
-elif compile_prog "" "-lrt" ; then
+elif compile_prog "" "-lrt" "clock_gettime"; then
     clock_gettime="yes"
     LIBS="-lrt $LIBS"
 fi
@@ -355,7 +356,7 @@ int main(int argc, char **argv)
   return clock_gettime(CLOCK_MONOTONIC, NULL);
 }
 EOF
-  if compile_prog "" "$LIBS" ; then
+  if compile_prog "" "$LIBS" "clock monotonic"; then
       clock_monotonic="yes"
   fi
 fi
@@ -372,7 +373,7 @@ int main(int argc, char **argv)
   return fdatasync(0);
 }
 EOF
-if compile_prog "" "" ; then
+if compile_prog "" "" "fdatasync"; then
   fdatasync="yes"
 fi
 echo "fdatasync                     $fdatasync"
@@ -393,7 +394,7 @@ int main(int argc, char **argv)
   return sync_file_range(0, 0, 0, flags);
 }
 EOF
-if compile_prog "" "" ; then
+if compile_prog "" "" "sync_file_range"; then
   sync_file_range="yes"
 fi
 echo "sync_file_range               $sync_file_range"
@@ -410,7 +411,7 @@ int main(int argc, char **argv)
   return ioctl(0, EXT4_IOC_MOVE_EXT, &me);
 }
 EOF
-if compile_prog "" "" ; then
+if compile_prog "" "" "ext4 move extent"; then
   ext4_me="yes"
 fi
 echo "EXT4 move extent              $ext4_me"
@@ -427,7 +428,7 @@ int main(int argc, char **argv)
   return splice(0, NULL, 0, NULL, 0, SPLICE_F_NONBLOCK);
 }
 EOF
-if compile_prog "" "" ; then
+if compile_prog "" "" "linux splice"; then
   linux_splice="yes"
 fi
 echo "Linux splice(2)               $linux_splice"
@@ -444,7 +445,7 @@ int main(int argc, char **argv)
   return 0;
 }
 EOF
-if compile_prog "" "" ; then
+if compile_prog "" "" "guasi"; then
   guasi="yes"
 fi
 echo "GUASI                         $guasi"
@@ -460,7 +461,7 @@ int main(int argc, char **argv)
   return vsl_vectored_write(0, &iov, 0, O_ATOMIC);
 }
 EOF
-if compile_prog "" "" ; then
+if compile_prog "" "" "fusion-aw"; then
   fusion_aw="yes"
 fi
 echo "Fusion-io atomic engine       $fusion_aw"
@@ -475,7 +476,7 @@ int main(int argc, char **argv)
   return numa_available();
 }
 EOF
-if compile_prog "" "-lnuma" ; then
+if compile_prog "" "-lnuma" "libnuma"; then
   libnuma="yes"
   LIBS="-lnuma $LIBS"
 fi
@@ -492,7 +493,7 @@ int main(int argc, char **argv)
   return 0;
 }
 EOF
-if compile_prog "" "" ; then
+if compile_prog "" "" "strsep"; then
   strsep="yes"
 fi
 echo "strsep                        $strsep"
@@ -510,7 +511,7 @@ int main(int argc, char **argv)
   return inet_aton(NULL, &in);
 }
 EOF
-if compile_prog "" "" ; then
+if compile_prog "" "" "inet_aton"; then
   inet_aton="yes"
 fi
 echo "inet_aton                     $inet_aton"
@@ -527,7 +528,7 @@ int main(int argc, char **argv)
   return len;
 }
 EOF
-if compile_prog "" "" ; then
+if compile_prog "" "" "socklen_t"; then
   socklen_t="yes"
 fi
 echo "socklen_t                     $socklen_t"
@@ -543,7 +544,7 @@ int main(int argc, char **argv)
   return ret;
 }
 EOF
-if compile_prog "" "" ; then
+if compile_prog "" "" "__thread"; then
   tls_thread="yes"
 fi
 echo "__thread                      $tls_thread"
