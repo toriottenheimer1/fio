@@ -271,6 +271,23 @@ fi
 echo "POSIX fadvise                 $posix_fadvise"
 
 ##########################################
+# POSIX fallocate probe
+posix_fallocate="no"
+cat > $TMPC << EOF
+#include <stdio.h>
+#include <fcntl.h>
+int main(int argc, char **argv)
+{
+  int r = posix_fallocate(0, 0, 1024);
+  return r;
+}
+EOF
+if compile_prog "" "" ; then
+    posix_fallocate="yes"
+fi
+echo "POSIX fallocate               $posix_fallocate"
+
+##########################################
 # sched_set/getaffinity 2 or 3 argument test
 linux_2arg_affinity="no"
 linux_3arg_affinity="no"
@@ -301,23 +318,6 @@ EOF
 fi
 echo "sched_setaffinity(3 arg)      $linux_3arg_affinity"
 echo "sched_setaffinity(2 arg)      $linux_2arg_affinity"
-
-##########################################
-# POSIX fallocate probe
-posix_fallocate="no"
-cat > $TMPC << EOF
-#include <stdio.h>
-#include <fcntl.h>
-int main(int argc, char **argv)
-{
-  int r = posix_fallocate(0, 0, 1024);
-  return r;
-}
-EOF
-if compile_prog "" "" ; then
-    posix_fallocate="yes"
-fi
-echo "POSIX fallocate               $posix_fallocate"
 
 ##########################################
 # clock_gettime probe
