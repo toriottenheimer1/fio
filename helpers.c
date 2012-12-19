@@ -29,7 +29,8 @@ int _weak inet_aton(const char *cp, struct in_addr *inp)
 	return 0;
 }
 
-int _weak clock_gettime(clockid_t clk_id, struct timespec *ts)
+#ifndef CONFIG_CLOCK_GETTIME
+int clock_gettime(clockid_t clk_id, struct timespec *ts)
 {
 	struct timeval tv;
 	int ret;
@@ -41,10 +42,10 @@ int _weak clock_gettime(clockid_t clk_id, struct timespec *ts)
 
 	return ret;
 }
+#endif
 
-#ifndef __NR_sync_file_range
-int _weak sync_file_range(int fd, off64_t offset, off64_t nbytes,
-			   unsigned int flags)
+#ifndef CONFIG_SYNC_FILE_RANGE
+int sync_file_range(int fd, off64_t offset, off64_t nbytes, unsigned int flags)
 {
 	errno = ENOSYS;
 	return -1;
@@ -52,7 +53,7 @@ int _weak sync_file_range(int fd, off64_t offset, off64_t nbytes,
 #endif
 
 #ifndef CONFIG_FADVISE
-int _weak posix_fadvise(int fd, off_t offset, off_t len, int advice)
+int posix_fadvise(int fd, off_t offset, off_t len, int advice)
 {
 	return 0;
 }

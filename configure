@@ -380,6 +380,7 @@ cat > $TMPC << EOF
 #include <unistd.h>
 #define _GNU_SOURCE
 #include <fcntl.h>
+#include <linux/fs.h>
 int main(int argc, char **argv)
 {
   unsigned int flags = SYNC_FILE_RANGE_WAIT_BEFORE | SYNC_FILE_RANGE_WRITE |
@@ -390,7 +391,7 @@ EOF
 if compile_prog "" "" ; then
   sync_file_range="yes"
 fi
-echo "sync_file_range               $fdatasync"
+echo "sync_file_range               $sync_file_range"
 
 ##########################################
 # ext4 move extent probe
