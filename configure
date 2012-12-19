@@ -493,6 +493,24 @@ fi
 echo "strsep                        $strsep"
 
 ##########################################
+# inet_aton() probe
+inet_aton="no"
+cat > $TMPC << EOF
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <stdio.h>
+int main(int argc, char **argv)
+{
+  struct in_addr in;
+  return inet_aton(NULL, &in);
+}
+EOF
+if compile_prog "" "" ; then
+  inet_aton="yes"
+fi
+echo "inet_aton                     $inet_aton"
+
+##########################################
 # socklen_t probe
 socklen_t="no"
 cat > $TMPC << EOF
@@ -567,6 +585,9 @@ elif test "$linux_2arg_affinity" = "yes" ; then
 fi
 if test "$strsep" = "yes" ; then
   echo "CONFIG_STRSEP=y" >> $config_host_mak
+fi
+if test "$inet_aton" = "yes" ; then
+  echo "CONFIG_INET_ATON=y" >> $config_host_mak
 fi
 if test "$socklen_t" = "yes" ; then
   echo "CONFIG_SOCKLEN_T=y" >> $config_host_mak

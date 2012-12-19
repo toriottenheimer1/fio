@@ -24,11 +24,6 @@ int posix_fallocate(int fd, off_t offset, off_t len)
 }
 #endif
 
-int _weak inet_aton(const char *cp, struct in_addr *inp)
-{
-	return 0;
-}
-
 #ifndef CONFIG_CLOCK_GETTIME
 int clock_gettime(clockid_t clk_id, struct timespec *ts)
 {

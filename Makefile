@@ -77,6 +77,10 @@ ifndef CONFIG_STRSEP
   CFLAGS += -DCONFIG_STRSEP
   SOURCE += lib/strsep.c
 endif
+ifndef CONFIG_INET_ATON
+  CFLAGS += -DCONFIG_INET_ATON
+  SOURCE += lib/inet_aton.c
+endif
 ifndef CONFIG_CLOCK_GETTIME
   CFLAGS += -DCONFIG_CLOCK_GETTIME
 endif
