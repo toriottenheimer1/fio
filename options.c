@@ -1337,7 +1337,7 @@ static struct fio_option options[FIO_MAX_OPTS] = {
 			    .help = "RDMA IO engine",
 			  },
 #endif
-#ifdef FIO_HAVE_FUSION_AW
+#ifdef CONFIG_FUSION_AW
 			  { .ival = "fusion-aw-sync",
 			    .help = "Fusion-io atomic write engine",
 			  },

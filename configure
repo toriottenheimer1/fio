@@ -387,6 +387,21 @@ if compile_prog "" "" ; then
 fi
 
 ##########################################
+# fusion-aw probe
+fusion_aw="no"
+cat > $TMPC << EOF
+#include <vsl_dp_experimental/vectored_write.h>
+int main(int argc, char **argv)
+{
+  struct vsl_iovec iov;
+  return vsl_vectored_write(0, &iov, 0, O_ATOMIC);
+}
+EOF
+if compile_prog "" "" ; then
+  fusion_aw="yes"
+fi
+
+##########################################
 # strsep() probe
 strsep="no"
 cat > $TMPC << EOF
@@ -437,6 +452,7 @@ echo "sched_setaffinity(3 arg)      $linux_3arg_affinity"
 echo "sched_setaffinity(2 arg)      $linux_2arg_affinity"
 echo "Linux splice(2)               $linux_splice"
 echo "GUASI                         $guasi"
+echo "Fusion-io atomic engine       $fusion_aw"
 echo "strsep                        $strsep"
 echo "socklen_t                     $socklen_t"
 
@@ -505,6 +521,9 @@ if test "$linux_splice" = "yes" ; then
 fi
 if test "$guasi" = "yes" ; then
   echo "CONFIG_GUASI=y" >> $config_host_mak
+fi
+if test "$fusion_aw" = "yes" ; then
+  echo "CONFIG_FUSION_AW=y" >> $config_host_mak
 fi
 
 echo "LIBS+=$LIBS" >> $config_host_mak

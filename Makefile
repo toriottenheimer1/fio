@@ -64,6 +64,10 @@ ifdef CONFIG_GUASI
   CFLAGS += -DCONFIG_GUASI
   SOURCE += engines/guasi.c
 endif
+ifdef CONFIG_FUSION_AW
+  CFLAGS += -DCONFIG_FUSION_AW
+  SOURCE += engines/fusion-aw.c
+endif
 
 ifndef CONFIG_STRSEP
   CFLAGS += -DCONFIG_STRSEP
@@ -85,7 +89,7 @@ endif
 ifeq ($(UNAME), Linux)
   SOURCE += diskutil.c fifo.c blktrace.c helpers.c cgroup.c trim.c \
 		engines/sg.c engines/syslet-rw.c engines/binject.c \
-		profiles/tiobench.c engines/fusion-aw.c
+		profiles/tiobench.c
   LIBS += -lpthread -ldl
   LDFLAGS += -rdynamic
 endif
