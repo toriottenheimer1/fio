@@ -17,7 +17,6 @@
 #include <linux/major.h>
 #include <endian.h>
 
-#include "indirect.h"
 #include "binject.h"
 #include "../file.h"
 
@@ -88,39 +87,6 @@ static inline int gettid(void)
 }
 
 #define SPLICE_DEF_SIZE	(64*1024)
-
-#ifdef FIO_HAVE_SYSLET
-
-struct syslet_uatom;
-struct async_head_user;
-
-/*
- * syslet stuff
- */
-static inline struct syslet_uatom *
-async_exec(struct syslet_uatom *atom, struct async_head_user *ahu)
-{
-	return (struct syslet_uatom *) syscall(__NR_async_exec, atom, ahu);
-}
-
-static inline long
-async_wait(unsigned long min_wait_events, unsigned long user_ring_idx,
-	   struct async_head_user *ahu)
-{
-	return syscall(__NR_async_wait, min_wait_events,
-			user_ring_idx, ahu);
-}
-
-static inline long async_thread(void *event, struct async_head_user *ahu)
-{
-	return syscall(__NR_async_thread, event, ahu);
-}
-
-static inline long umem_add(unsigned long *uptr, unsigned long inc)
-{
-	return syscall(__NR_umem_add, uptr, inc);
-}
-#endif /* FIO_HAVE_SYSLET */
 
 enum {
 	IOPRIO_CLASS_NONE,

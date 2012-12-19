@@ -110,8 +110,7 @@ endif
 
 ifeq ($(UNAME), Linux)
   SOURCE += diskutil.c fifo.c blktrace.c helpers.c cgroup.c trim.c \
-		engines/sg.c engines/syslet-rw.c engines/binject.c \
-		profiles/tiobench.c
+		engines/sg.c engines/binject.c profiles/tiobench.c
   LIBS += -lpthread -ldl
   LDFLAGS += -rdynamic
 endif

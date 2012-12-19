@@ -15,7 +15,6 @@
 #include <linux/major.h>
 #include <endian.h>
 
-#include "indirect.h"
 #include "binject.h"
 #include "../file.h"
 
