@@ -565,7 +565,7 @@ static int str_verify_cpus_allowed_cb(void *data, const char *input)
 }
 #endif
 
-#ifdef FIO_HAVE_LIBNUMA
+#ifdef CONFIG_LIBNUMA
 static int str_numa_cpunodes_cb(void *data, char *input)
 {
 	struct thread_data *td = data;
@@ -2278,7 +2278,7 @@ static struct fio_option options[FIO_MAX_OPTS] = {
 		.help	= "Set CPUs allowed",
 	},
 #endif
-#ifdef FIO_HAVE_LIBNUMA
+#ifdef CONFIG_LIBNUMA
 	{
 		.name	= "numa_cpu_nodes",
 		.type	= FIO_OPT_STR,

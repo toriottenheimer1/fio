@@ -100,6 +100,9 @@ endif
 ifdef CONFIG_SYNC_FILE_RANGE
   CFLAGS += -DCONFIG_SYNC_FILE_RANGE
 endif
+ifdef CONFIG_LIBNUMA
+  CFLAGS += -DCONFIG_LIBNUMA
+endif
 
 ifeq ($(UNAME), Linux)
   SOURCE += diskutil.c fifo.c blktrace.c helpers.c cgroup.c trim.c \

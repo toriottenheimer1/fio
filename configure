@@ -440,6 +440,22 @@ fi
 echo "Fusion-io atomic engine       $fusion_aw"
 
 ##########################################
+# libnuma probe
+libnuma="no"
+cat > $TMPC << EOF
+#include <numa.h>
+int main(int argc, char **argv)
+{
+  return numa_available();
+}
+EOF
+if compile_prog "" "-lnuma" ; then
+  libnuma="yes"
+  LIBS="-lnuma $LIBS"
+fi
+echo "libnuma                       $libnuma"
+
+##########################################
 # strsep() probe
 strsep="no"
 cat > $TMPC << EOF
@@ -548,6 +564,9 @@ if test "$guasi" = "yes" ; then
 fi
 if test "$fusion_aw" = "yes" ; then
   echo "CONFIG_FUSION_AW=y" >> $config_host_mak
+fi
+if test "$libnuma" = "yes" ; then
+  echo "CONFIG_LIBNUMA=y" >> $config_host_mak
 fi
 
 echo "LIBS+=$LIBS" >> $config_host_mak
