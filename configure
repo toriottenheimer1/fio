@@ -124,6 +124,7 @@ echo "Linux AIO support             $libaio"
 ##########################################
 # posix aio probe
 posix_aio="no"
+posix_aio_lrt="no"
 cat > $TMPC <<EOF
 #include <aio.h>
 int main(void)
@@ -133,11 +134,15 @@ int main(void)
   return 0;
 }
 EOF
-if compile_prog "" "-lrt" ; then
-  posix_aio=yes
+if compile_prog "" "" ; then
+  posix_aio="yes"
+elif compile_prog "" "-lrt" ; then
+  posix_aio="yes"
+  posix_aio_lrt="yes"
   LIBS="-lrt $LIBS"
 fi
 echo "POSIX AIO support             $posix_aio"
+echo "POSIX AIO support needs -lrt  $posix_aio_lrt"
 
 ##########################################
 # posix aio fsync probe
