@@ -124,6 +124,7 @@ static void fio_init gtod_init(void)
 
 #endif /* FIO_DEBUG_TIME */
 
+#ifdef CONFIG_CLOCK_GETTIME
 static int fill_clock_gettime(struct timespec *ts)
 {
 #ifdef CONFIG_CLOCK_MONOTONIC
@@ -132,25 +133,11 @@ static int fill_clock_gettime(struct timespec *ts)
 	return clock_gettime(CLOCK_REALTIME, ts);
 #endif
 }
-
-#ifdef FIO_DEBUG_TIME
-void fio_gettime(struct timeval *tp, void *caller)
-#else
-void fio_gettime(struct timeval *tp, void fio_unused *caller)
 #endif
+
+static void *__fio_gettime(struct timeval *tp)
 {
 	struct tv_valid *tv;
-
-#ifdef FIO_DEBUG_TIME
-	if (!caller)
-		caller = __builtin_return_address(0);
-
-	gtod_log_caller(caller);
-#endif
-	if (fio_tv) {
-		memcpy(tp, fio_tv, sizeof(*tp));
-		return;
-	}
 
 #ifdef CONFIG_TLS_THREAD
 	tv = &static_tv_valid;
@@ -164,6 +151,7 @@ void fio_gettime(struct timeval *tp, void fio_unused *caller)
 		gettimeofday(tp, NULL);
 		break;
 #endif
+#ifdef CONFIG_CLOCK_GETTIME
 	case CS_CGETTIME: {
 		struct timespec ts;
 
@@ -176,6 +164,7 @@ void fio_gettime(struct timeval *tp, void fio_unused *caller)
 		tp->tv_usec = ts.tv_nsec / 1000;
 		break;
 		}
+#endif
 #ifdef ARCH_HAVE_CPU_CLOCK
 	case CS_CPUCLOCK: {
 		unsigned long long usecs, t;
@@ -198,6 +187,30 @@ void fio_gettime(struct timeval *tp, void fio_unused *caller)
 		break;
 	}
 
+	return tv;
+}
+
+#ifdef FIO_DEBUG_TIME
+void fio_gettime(struct timeval *tp, void *caller)
+#else
+void fio_gettime(struct timeval *tp, void fio_unused *caller)
+#endif
+{
+	struct tv_valid *tv;
+
+#ifdef FIO_DEBUG_TIME
+	if (!caller)
+		caller = __builtin_return_address(0);
+
+	gtod_log_caller(caller);
+#endif
+	if (fio_tv) {
+		memcpy(tp, fio_tv, sizeof(*tp));
+		return;
+	}
+
+	tv = __fio_gettime(tp);
+
 	/*
 	 * If Linux is using the tsc clock on non-synced processors,
 	 * sometimes time can appear to drift backwards. Fix that up.
@@ -218,21 +231,16 @@ void fio_gettime(struct timeval *tp, void fio_unused *caller)
 #ifdef ARCH_HAVE_CPU_CLOCK
 static unsigned long get_cycles_per_usec(void)
 {
-	struct timespec ts;
 	struct timeval s, e;
 	unsigned long long c_s, c_e;
 
-	fill_clock_gettime(&ts);
-	s.tv_sec = ts.tv_sec;
-	s.tv_usec = ts.tv_nsec / 1000;
+	__fio_gettime(&s);
 
 	c_s = get_cpu_clock();
 	do {
 		unsigned long long elapsed;
 
-		fill_clock_gettime(&ts);
-		e.tv_sec = ts.tv_sec;
-		e.tv_usec = ts.tv_nsec / 1000;
+		__fio_gettime(&e);
 
 		elapsed = utime_since(&s, &e);
 		if (elapsed >= 1280) {
