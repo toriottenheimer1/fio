@@ -1,4 +1,3 @@
-CC ?= gcc
 DEBUGFLAGS = -D_FORTIFY_SOURCE=2 -DFIO_INC_DEBUG
 CPPFLAGS= -D_GNU_SOURCE -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 \
 	$(DEBUGFLAGS)
@@ -135,7 +134,6 @@ ifeq ($(UNAME), Android)
   CPPFLAGS += -DFIO_NO_HAVE_SHM_H
 endif
 ifeq ($(UNAME), SunOS)
-  CC      = gcc
   LIBS	 += -lpthread -ldl -laio -lrt -lnsl -lsocket
   CPPFLAGS += -D__EXTENSIONS__
 endif
@@ -153,7 +151,6 @@ ifeq ($(UNAME), AIX)
   LDFLAGS += -L/opt/freeware/lib -Wl,-blibpath:/opt/freeware/lib:/usr/lib:/lib -Wl,-bmaxdata:0x80000000
 endif
 ifeq ($(UNAME), HP-UX)
-  CC      = gcc
   LIBS   += -lpthread -ldl -lrt
   CFLAGS += -D_LARGEFILE64_SOURCE -D_XOPEN_SOURCE_EXTENDED
 endif
@@ -165,8 +162,6 @@ ifneq (,$(findstring CYGWIN,$(UNAME)))
   SOURCE += engines/windowsaio.c os/windows/posix.c
   LIBS	 += -lpthread -lpsapi -lws2_32
   CFLAGS += -DPSAPI_VERSION=1 -Ios/windows/posix/include -Wno-format
-  CC	  = x86_64-w64-mingw32-gcc
-  #CC	  = i686-w64-mingw32-gcc
 endif
 
 OBJS = $(SOURCE:.c=.o)

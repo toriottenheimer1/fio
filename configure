@@ -80,6 +80,10 @@ feature_not_found() {
   exit 1;
 }
 
+has() {
+  type "$1" >/dev/null 2>&1
+}
+
 check_define() {
   cat > $TMPC <<EOF
 #if !defined($1)
@@ -195,6 +199,18 @@ case "$cpu" in
     exit 1;
   ;;
 esac
+
+if test -z $CC; then
+  if "$targetos" = "FreeBSD"; then
+    if has clang; then
+      CC=clang
+    else
+      CC=gcc
+    fi
+  elif "$targetos" = "MINGW32"; then
+    CC=x86_64-w64-mingw32-gcc
+  fi
+fi
 
 cc="${CC-${cross_prefix}gcc}"
 
