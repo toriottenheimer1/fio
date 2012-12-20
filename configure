@@ -620,6 +620,23 @@ fi
 echo "strsep                        $strsep"
 
 ##########################################
+# getopt_long_only() probe
+getopt_long_only="no"
+cat > $TMPC << EOF
+#include <unistd.h>
+#include <stdio.h>
+int main(int argc, char **argv)
+{
+  int c = getopt_long_only(argc, argv, NULL, NULL, NULL);
+  return c;
+}
+EOF
+if compile_prog "" "" "getopt_long_only"; then
+  getopt_long_only="yes"
+fi
+echo "getopt_long_only()            $getopt_long_only"
+
+##########################################
 # inet_aton() probe
 inet_aton="no"
 cat > $TMPC << EOF
@@ -728,6 +745,9 @@ elif test "$linux_2arg_affinity" = "yes" ; then
 fi
 if test "$strsep" = "yes" ; then
   echo "CONFIG_STRSEP=y" >> $config_host_mak
+fi
+if test "$getopt_long_only" = "yes" ; then
+  echo "CONFIG_GETOPT_LONG_ONLY=y" >> $config_host_mak
 fi
 if test "$inet_aton" = "yes" ; then
   echo "CONFIG_INET_ATON=y" >> $config_host_mak
