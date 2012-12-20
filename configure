@@ -60,14 +60,14 @@ do_cc() {
 }
 
 compile_object() {
-  do_cc $QEMU_CFLAGS -c -o $TMPO $TMPC
+  do_cc $CFLAGS -c -o $TMPO $TMPC
 }
 
 compile_prog() {
   local_cflags="$1"
   local_ldflags="$2"
   echo "Compiling test case $3" >> config.log
-  do_cc $QEMU_CFLAGS $local_cflags -o $TMPE $TMPC $LDFLAGS $local_ldflags
+  do_cc $CFLAGS $local_cflags -o $TMPE $TMPC $LDFLAGS $local_ldflags
 }
 
 feature_not_found() {
@@ -99,6 +99,8 @@ EOF
 
 targetos=""
 cpu=""
+
+cc="${CC-${cross_prefix}gcc}"
 
 if check_define __linux__ ; then
   targetos="Linux"
@@ -201,13 +203,13 @@ case "$cpu" in
 esac
 
 if test -z $CC; then
-  if "$targetos" = "FreeBSD"; then
+  if test "$targetos" = "FreeBSD"; then
     if has clang; then
       CC=clang
     else
       CC=gcc
     fi
-  elif "$targetos" = "MINGW32"; then
+  elif test "$targetos" = "MINGW32"; then
     CC=x86_64-w64-mingw32-gcc
   fi
 fi
