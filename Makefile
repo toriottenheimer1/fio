@@ -27,7 +27,8 @@ SOURCE := gettime.c fio.c ioengines.c init.c stat.c log.c time.c filesetup.c \
 		lib/num2str.c lib/ieee754.c $(wildcard crc/*.c) engines/cpu.c \
 		engines/mmap.c engines/sync.c engines/null.c engines/net.c \
 		memalign.c server.c client.c iolog.c backend.c libfio.c flow.c \
-		json.c lib/zipf.c lib/axmap.c lib/lfsr.c gettime-thread.c
+		json.c lib/zipf.c lib/axmap.c lib/lfsr.c gettime-thread.c \
+		helpers.c
 
 ifdef CONFIG_64BIT
   CFLAGS += -DBITS_PER_LONG=64
@@ -122,47 +123,44 @@ ifdef CONFIG_TLS_THREAD
 endif
 
 ifeq ($(UNAME), Linux)
-  SOURCE += diskutil.c fifo.c blktrace.c helpers.c cgroup.c trim.c \
-		engines/sg.c engines/binject.c profiles/tiobench.c
+  SOURCE += diskutil.c fifo.c blktrace.c cgroup.c trim.c engines/sg.c \
+		engines/binject.c profiles/tiobench.c
   LIBS += -lpthread -ldl
   LDFLAGS += -rdynamic
 endif
 ifeq ($(UNAME), Android)
-  SOURCE += diskutil.c fifo.c blktrace.c helpers.c trim.c profiles/tiobench.c
+  SOURCE += diskutil.c fifo.c blktrace.c trim.c profiles/tiobench.c
   LIBS += -ldl
   LDFLAGS += -rdynamic
   CPPFLAGS += -DFIO_NO_HAVE_SHM_H
 endif
 ifeq ($(UNAME), SunOS)
   CC      = gcc
-  SOURCE += fifo.c helpers.c
+  SOURCE += fifo.c
   LIBS	 += -lpthread -ldl -laio -lrt -lnsl -lsocket
   CPPFLAGS += -D__EXTENSIONS__
 endif
 ifeq ($(UNAME), FreeBSD)
-  SOURCE += helpers.c
   LIBS	 += -lpthread -lrt
   LDFLAGS += -rdynamic
 endif
 ifeq ($(UNAME), NetBSD)
-  SOURCE += helpers.c
   LIBS	 += -lpthread -lrt
   LDFLAGS += -rdynamic
 endif
 ifeq ($(UNAME), AIX)
-  SOURCE += fifo.c helpers.c
+  SOURCE += fifo.c
   LIBS	 += -lpthread -ldl -lrt
   CPPFLAGS += -D_LARGE_FILES -D__ppc__
   LDFLAGS += -L/opt/freeware/lib -Wl,-blibpath:/opt/freeware/lib:/usr/lib:/lib -Wl,-bmaxdata:0x80000000
 endif
 ifeq ($(UNAME), HP-UX)
   CC      = gcc
-  SOURCE += fifo.c helpers.c
+  SOURCE += fifo.c
   LIBS   += -lpthread -ldl -lrt
   CFLAGS += -D_LARGEFILE64_SOURCE
 endif
 ifeq ($(UNAME), Darwin)
-  SOURCE += helpers.c
   LIBS	 += -lpthread -ldl
 endif
 ifneq (,$(findstring CYGWIN,$(UNAME)))
