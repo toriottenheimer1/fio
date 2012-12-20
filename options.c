@@ -1742,14 +1742,18 @@ static struct fio_option options[FIO_MAX_OPTS] = {
 		.off1	= td_var_offset(clocksource),
 		.help	= "What type of timing source to use",
 		.posval	= {
+#ifdef CONFIG_GETTIMEOFDAY
 			  { .ival = "gettimeofday",
 			    .oval = CS_GTOD,
 			    .help = "Use gettimeofday(2) for timing",
 			  },
+#endif
+#ifdef CONFIG_CLOCK_GETTIME
 			  { .ival = "clock_gettime",
 			    .oval = CS_CGETTIME,
 			    .help = "Use clock_gettime(2) for timing",
 			  },
+#endif
 #ifdef ARCH_HAVE_CPU_CLOCK
 			  { .ival = "cpu",
 			    .oval = CS_CPUCLOCK,

@@ -310,7 +310,7 @@ int fio_net_send_simple_cmd(int sk, uint16_t opcode, uint64_t tag,
 	fio_net_cmd_crc(&cmd->cmd);
 
 	INIT_FLIST_HEAD(&cmd->list);
-	gettimeofday(&cmd->tv, NULL);
+	fio_gettime(&cmd->tv, NULL);
 	cmd->saved_tag = tag;
 
 	ret = fio_send_data(sk, &cmd->cmd, sizeof(cmd->cmd));

@@ -159,9 +159,11 @@ void fio_gettime(struct timeval *tp, void fio_unused *caller)
 #endif
 
 	switch (fio_clock_source) {
+#ifdef CONFIG_GETTIMEOFDAY
 	case CS_GTOD:
 		gettimeofday(tp, NULL);
 		break;
+#endif
 	case CS_CGETTIME: {
 		struct timespec ts;
 

@@ -79,6 +79,11 @@ int main(int argc, char *argv[], char *envp[])
 		return 1;
 	}
 
+#if !defined(CONFIG_GETTIMEOFDAY) && !defined(CONFIG_CLOCK_GETTIME) && \
+    !defined(ARCH_HAVE_CPU_CLOCK)
+#error "No available clock source!"
+#endif
+
 	arch_init(envp);
 
 	sinit();

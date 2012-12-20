@@ -24,7 +24,7 @@ int posix_fallocate(int fd, off_t offset, off_t len)
 }
 #endif
 
-#ifndef CONFIG_CLOCK_GETTIME
+#if !defined(CONFIG_CLOCK_GETTIME) && defined(CONFIG_GETTIMEOFDAY)
 int clock_gettime(clockid_t clk_id, struct timespec *ts)
 {
 	struct timeval tv;
