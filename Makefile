@@ -151,7 +151,6 @@ ifeq ($(UNAME), AIX)
   LDFLAGS += -L/opt/freeware/lib -Wl,-blibpath:/opt/freeware/lib:/usr/lib:/lib -Wl,-bmaxdata:0x80000000
 endif
 ifeq ($(UNAME), HP-UX)
-<<<<<<< HEAD
   CC      = gcc
   SOURCE += fifo.c helpers.c lib/getopt_long.c
   LIBS   += -lpthread -ldl -lrt
