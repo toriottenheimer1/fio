@@ -502,6 +502,41 @@ fi
 echo "CLOCK_MONOTONIC               $clock_monotonic"
 
 ##########################################
+# CLOCK_MONOTONIC_PRECISE probe
+clock_monotonic_precise="no"
+if test "$clock_gettime" = "yes" ; then
+  cat > $TMPC << EOF
+#include <stdio.h>
+#include <time.h>
+int main(int argc, char **argv)
+{
+  return clock_gettime(CLOCK_MONOTONIC_PRECISE, NULL);
+}
+EOF
+  if compile_prog "" "$LIBS" "clock monotonic precise"; then
+      clock_monotonic_precise="yes"
+  fi
+fi
+echo "CLOCK_MONOTONIC_PRECISE       $clock_monotonic_precise"
+
+##########################################
+# gettimeofday() probe
+gettimeofday="no"
+cat > $TMPC << EOF
+#include <sys/time.h>
+#include <stdio.h>
+int main(int argc, char **argv)
+{
+  struct timeval tv;
+  return gettimeofday(&tv, NULL);
+}
+EOF
+if compile_prog "" "" "gettimeofday"; then
+    gettimeofday="yes"
+fi
+echo "gettimeofday                  $gettimeofday"
+
+##########################################
 # fdatasync() probe
 fdatasync="no"
 cat > $TMPC << EOF
@@ -752,6 +787,12 @@ if test "$clock_gettime" = "yes" ; then
 fi
 if test "$clock_monotonic" = "yes" ; then
   echo "CONFIG_CLOCK_MONOTONIC=y" >> $config_host_mak
+fi
+if test "$clock_monotonic_precise" = "yes" ; then
+  echo "CONFIG_CLOCK_MONOTONIC_PRECISE=y" >> $config_host_mak
+fi
+if test "$gettimeofday" = "yes" ; then
+  echo "CONFIG_GETTIMEOFDAY=y" >> $config_host_mak
 fi
 if test "$posix_fadvise" = "yes" ; then
   echo "CONFIG_POSIX_FADVISE=y" >> $config_host_mak
