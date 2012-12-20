@@ -136,7 +136,6 @@ ifeq ($(UNAME), Android)
 endif
 ifeq ($(UNAME), SunOS)
   CC      = gcc
-  SOURCE += fifo.c
   LIBS	 += -lpthread -ldl -laio -lrt -lnsl -lsocket
   CPPFLAGS += -D__EXTENSIONS__
 endif
@@ -149,14 +148,12 @@ ifeq ($(UNAME), NetBSD)
   LDFLAGS += -rdynamic
 endif
 ifeq ($(UNAME), AIX)
-  SOURCE += fifo.c
   LIBS	 += -lpthread -ldl -lrt
   CPPFLAGS += -D_LARGE_FILES -D__ppc__
   LDFLAGS += -L/opt/freeware/lib -Wl,-blibpath:/opt/freeware/lib:/usr/lib:/lib -Wl,-bmaxdata:0x80000000
 endif
 ifeq ($(UNAME), HP-UX)
   CC      = gcc
-  SOURCE += fifo.c
   LIBS   += -lpthread -ldl -lrt
   CFLAGS += -D_LARGEFILE64_SOURCE -D_XOPEN_SOURCE_EXTENDED
 endif
