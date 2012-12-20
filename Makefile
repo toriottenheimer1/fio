@@ -158,7 +158,7 @@ ifeq ($(UNAME), HP-UX)
   CC      = gcc
   SOURCE += fifo.c
   LIBS   += -lpthread -ldl -lrt
-  CFLAGS += -D_LARGEFILE64_SOURCE
+  CFLAGS += -D_LARGEFILE64_SOURCE -D_XOPEN_SOURCE_EXTENDED
 endif
 ifeq ($(UNAME), Darwin)
   LIBS	 += -lpthread -ldl
