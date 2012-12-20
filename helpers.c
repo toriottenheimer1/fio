@@ -24,21 +24,6 @@ int posix_fallocate(int fd, off_t offset, off_t len)
 }
 #endif
 
-#if !defined(CONFIG_CLOCK_GETTIME) && defined(CONFIG_GETTIMEOFDAY)
-int clock_gettime(clockid_t clk_id, struct timespec *ts)
-{
-	struct timeval tv;
-	int ret;
-
-	ret = gettimeofday(&tv, NULL);
-
-	ts->tv_sec = tv.tv_sec;
-	ts->tv_nsec = tv.tv_usec * 1000;
-
-	return ret;
-}
-#endif
-
 #ifndef CONFIG_SYNC_FILE_RANGE
 int sync_file_range(int fd, off64_t offset, off64_t nbytes, unsigned int flags)
 {

@@ -8,7 +8,6 @@
 
 extern int fallocate(int fd, int mode, off_t offset, off_t len);
 extern int posix_fallocate(int fd, off_t offset, off_t len);
-extern int clock_gettime(clockid_t clk_id, struct timespec *ts);
 extern int sync_file_range(int fd, off64_t offset, off64_t nbytes,
 					unsigned int flags);
 extern int posix_fadvise(int fd, off_t offset, off_t len, int advice);
