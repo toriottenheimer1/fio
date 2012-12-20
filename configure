@@ -196,10 +196,12 @@ case "$cpu" in
   ;;
 esac
 
-echo "OS is                         $targetos"
-echo "CPU is                        $cpu"
-
 cc="${CC-${cross_prefix}gcc}"
+
+echo "Operating system              $targetos"
+echo "CPU                           $cpu"
+echo "Compiler                      $cc"
+echo
 
 ##########################################
 # check for wordsize
@@ -756,3 +758,4 @@ if test "$tls_thread" = "yes" ; then
 fi
 
 echo "LIBS+=$LIBS" >> $config_host_mak
+echo "CC=$cc" >> $config_host_mak
