@@ -233,7 +233,13 @@ static unsigned long get_cycles_per_usec(void)
 {
 	struct timeval s, e;
 	unsigned long long c_s, c_e;
+	enum fio_cs old_cs = fio_clock_source;
 
+#ifdef CONFIG_CLOCK_GETTIME
+	fio_clock_source = CS_CGETTIME;
+#else
+	fio_clock_source = CS_GTOD;
+#endif
 	__fio_gettime(&s);
 
 	c_s = get_cpu_clock();
@@ -249,6 +255,7 @@ static unsigned long get_cycles_per_usec(void)
 		}
 	} while (1);
 
+	fio_clock_source = old_cs;
 	return (c_e - c_s + 127) >> 7;
 }
 
