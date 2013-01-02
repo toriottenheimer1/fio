@@ -16,8 +16,8 @@
 #ifdef ARCH_HAVE_CPU_CLOCK
 static unsigned long cycles_per_usec;
 static unsigned long inv_cycles_per_usec;
-int tsc_reliable = 0;
 #endif
+int tsc_reliable = 0;
 
 struct tv_valid {
 	struct timeval last_tv;
@@ -298,7 +298,7 @@ static void calibrate_cpu_clock(void)
 		dprint(FD_TIME, "cycles[%d]=%lu\n", i, cycles[i] / 10);
 
 	avg /= samples;
-	avg = (avg + 9) / 10;
+	avg = (avg + 5) / 10;
 	dprint(FD_TIME, "avg: %lu\n", avg);
 	dprint(FD_TIME, "mean=%f, S=%f\n", mean, S);
 
