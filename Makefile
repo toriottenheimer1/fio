@@ -11,13 +11,15 @@ UNAME  := $(shell uname)
 ifneq ($(wildcard config-host.mak),)
 all:
 include config-host.mak
-config-host-mak: ./configure
+config-host-mak: configure
 	@echo $@ is out-of-date, running configure
 	@sed -n "/.*Configured with/s/[^:]*: //p" $@ | sh
 else
 config-host.mak:
-	@echo "Please call configure before running make!"
-	@exit 1
+	@echo "Running configure for you..."
+	@./configure
+all:
+include config-host.mak
 endif
 
 SOURCE := gettime.c fio.c ioengines.c init.c stat.c log.c time.c filesetup.c \
