@@ -1946,5 +1946,6 @@ int fio_backend(void)
 	fio_mutex_remove(writeout_mutex);
 	fio_mutex_remove(disk_thread_mutex);
 	stat_exit();
+	reset_fio_state();
 	return exit_value;
 }
