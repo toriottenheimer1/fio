@@ -1029,15 +1029,26 @@ static int add_job(struct thread_data *td, const char *jobname, int job_add_num,
 		goto err;
 
 	if (o->lat_log_file) {
-		setup_log(&td->lat_log, o->log_avg_msec, IO_LOG_TYPE_LAT);
-		setup_log(&td->slat_log, o->log_avg_msec, IO_LOG_TYPE_SLAT);
-		setup_log(&td->clat_log, o->log_avg_msec, IO_LOG_TYPE_CLAT);
-	}
-	if (o->bw_log_file)
-		setup_log(&td->bw_log, o->log_avg_msec, IO_LOG_TYPE_BW);
-	if (o->iops_log_file)
-		setup_log(&td->iops_log, o->log_avg_msec, IO_LOG_TYPE_IOPS);
+		int ret = 0;
 
+		ret |= setup_log(&td->lat_log, o->log_avg_msec, IO_LOG_TYPE_LAT);
+		ret |= setup_log(&td->slat_log, o->log_avg_msec, IO_LOG_TYPE_SLAT);
+		ret |= setup_log(&td->clat_log, o->log_avg_msec, IO_LOG_TYPE_CLAT);
+		if (ret) {
+			td_verror(td, EINVAL, "setup lat logs");
+			goto err;
+		}
+	}
+	if (o->bw_log_file &&
+	    setup_log(&td->bw_log, o->log_avg_msec, IO_LOG_TYPE_BW)) {
+		td_verror(td, EINVAL, "setup bw logs");
+		goto err;
+	}
+	if (o->iops_log_file &&
+	    setup_log(&td->iops_log, o->log_avg_msec, IO_LOG_TYPE_IOPS)) {
+		td_verror(td, EINVAL, "setup iops logs");
+		goto err;
+	}
 	if (!o->name)
 		o->name = strdup(jobname);
 

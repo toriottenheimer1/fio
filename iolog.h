@@ -144,7 +144,7 @@ extern void add_iops_sample(struct thread_data *, enum fio_ddir, unsigned int,
 				struct timeval *);
 extern void init_disk_util(struct thread_data *);
 extern void update_rusage_stat(struct thread_data *);
-extern void setup_log(struct io_log **, unsigned long, int);
+extern int setup_log(struct io_log **, unsigned long, int);
 extern void finish_log(struct thread_data *, struct io_log *, const char *);
 extern void finish_log_named(struct thread_data *, struct io_log *, const char *, const char *);
 extern void __finish_log(struct io_log *, const char *);

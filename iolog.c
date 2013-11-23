@@ -503,7 +503,7 @@ int init_iolog(struct thread_data *td)
 	return ret;
 }
 
-void setup_log(struct io_log **log, unsigned long avg_msec, int log_type)
+int setup_log(struct io_log **log, unsigned long avg_msec, int log_type)
 {
 	struct io_log *l;
 	int err;
@@ -524,7 +524,7 @@ void setup_log(struct io_log **log, unsigned long avg_msec, int log_type)
 		log_err("fio: deflateInit2 failed (%d)\n", err);
 		free(l->buf);
 		free(l);
-		return;
+		return 1;
 	}
 #else
 	l->max_samples = 1024;
@@ -534,6 +534,7 @@ void setup_log(struct io_log **log, unsigned long avg_msec, int log_type)
 	l->log_type = log_type;
 	l->avg_msec = avg_msec;
 	*log = l;
+	return 0;
 }
 
 #define SAMPLES_PER_ROUND	64
