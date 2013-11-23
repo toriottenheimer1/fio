@@ -6,6 +6,10 @@
 #include <stdlib.h>
 #include <libgen.h>
 #include <assert.h>
+#ifdef CONFIG_ZLIB
+#include <zlib.h>
+#endif
+
 #include "flist.h"
 #include "fio.h"
 #include "verify.h"
@@ -501,20 +505,138 @@ int init_iolog(struct thread_data *td)
 
 void setup_log(struct io_log **log, unsigned long avg_msec, int log_type)
 {
-	struct io_log *l = malloc(sizeof(*l));
+	struct io_log *l;
+	int err;
 
-	memset(l, 0, sizeof(*l));
-	l->nr_samples = 0;
+	l = calloc(1, sizeof(*l));
+#ifdef CONFIG_ZLIB
+	l->buf = malloc(IOLOG_Z_WINDOW);
+	l->buf_size = IOLOG_Z_WINDOW;
+
+	l->stream.next_in = Z_NULL;
+	l->stream.zalloc = Z_NULL;
+	l->stream.zfree = Z_NULL;
+	l->stream.opaque = Z_NULL;
+
+	err = deflateInit2(&l->stream, Z_BEST_SPEED, Z_DEFLATED, 15, 8,
+				Z_DEFAULT_STRATEGY);
+	if (err < 0) {
+		log_err("fio: deflateInit2 failed (%d)\n", err);
+		free(l->buf);
+		free(l);
+		return;
+	}
+#else
 	l->max_samples = 1024;
-	l->log_type = log_type;
 	l->log = malloc(l->max_samples * sizeof(struct io_sample));
+#endif
+
+	l->log_type = log_type;
 	l->avg_msec = avg_msec;
 	*log = l;
 }
 
-void __finish_log(struct io_log *log, const char *name)
+#define SAMPLES_PER_ROUND	64
+
+static void free_log(struct io_log *log)
+{
+#ifdef CONFIG_ZLIB
+	free(log->buf);
+#else
+	free(log->log);
+#endif
+	free(log);
+}
+
+#ifdef CONFIG_ZLIB
+static void __finish_log_method(struct io_log *log, FILE *f)
+{
+	struct io_sample *samples;
+	unsigned int i;
+	z_stream out;
+	int err;
+
+	/*
+	 * Finish deflation of the log
+	 */
+	deflate(&log->stream, Z_FINISH);
+	deflateEnd(&log->stream);
+
+	if (!log->stream.total_out)
+		return;
+
+	out.zalloc = Z_NULL;
+	out.zfree = Z_NULL;
+	out.opaque = Z_NULL;
+	out.avail_in = 0;
+	out.next_in = Z_NULL;
+
+	if (inflateInit(&out) != Z_OK) {
+		log_err("fio: log inflation init failed\n");
+		return;
+	}
+
+	samples = malloc(SAMPLES_PER_ROUND * sizeof(struct io_sample));
+	out.avail_in = log->stream.total_out;
+	out.next_in = log->buf;
+
+	do {
+		unsigned int this_out;
+		unsigned int nr;
+
+		this_out = SAMPLES_PER_ROUND * sizeof(struct io_sample);
+		out.avail_out = this_out;
+		out.next_out = (void *) samples;
+		err = inflate(&out, Z_NO_FLUSH);
+		if (err < 0) {
+			log_err("fio: log inflation failed: %d\n", err);
+			break;
+		}
+
+		nr = (this_out - out.avail_out) / sizeof(struct io_sample);
+
+		for (i = 0; i < nr; i++) {
+			struct io_sample *s = &samples[i];
+
+			s->time = le64_to_cpu(s->time);
+			s->val = le64_to_cpu(s->val);
+			s->ddir = le32_to_cpu(s->ddir);
+			s->bs = le32_to_cpu(s->bs);
+
+			fprintf(f, "%lu, %lu, %u, %u\n",
+					(unsigned long) s->time,
+					(unsigned long) s->val,
+					s->ddir, s->bs);
+		}
+	} while (out.avail_in);
+
+	err = inflateEnd(&out);
+	if (err < 0)
+		log_err("fio: log end inflation failed\n");
+}
+#else
+static void __finish_log_method(struct io_log *log, FILE *f)
 {
 	unsigned int i;
+
+	for (i = 0; i < log->nr_samples; i++) {
+		struct io_sample *s = &log->log[i];
+
+		s->time	= le64_to_cpu(s->time);
+		s->val	= le64_to_cpu(s->val);
+		s->ddir	= le32_to_cpu(s->ddir);
+		s->bs	= le32_to_cpu(s->bs);
+
+		fprintf(f, "%lu, %lu, %u, %u\n",
+				(unsigned long) s->time,
+				(unsigned long) s->val,
+				s->ddir, s->bs);
+	}
+}
+#endif
+
+void __finish_log(struct io_log *log, const char *name)
+{
 	FILE *f;
 
 	f = fopen(name, "a");
@@ -523,16 +645,10 @@ void __finish_log(struct io_log *log, const char *name)
 		return;
 	}
 
-	for (i = 0; i < log->nr_samples; i++) {
-		fprintf(f, "%lu, %lu, %u, %u\n",
-				(unsigned long) log->log[i].time,
-				(unsigned long) log->log[i].val,
-				log->log[i].ddir, log->log[i].bs);
-	}
+	__finish_log_method(log, f);
 
 	fclose(f);
-	free(log->log);
-	free(log);
+	free_log(log);
 }
 
 void finish_log_named(struct thread_data *td, struct io_log *log,
@@ -545,8 +661,7 @@ void finish_log_named(struct thread_data *td, struct io_log *log,
 
 	if (td->client_type == FIO_CLIENT_TYPE_GUI) {
 		fio_send_iolog(td, log, p);
-		free(log->log);
-		free(log);
+		free_log(log);
 	} else
 		__finish_log(log, p);
 }
@@ -554,4 +669,85 @@ void finish_log_named(struct thread_data *td, struct io_log *log,
 void finish_log(struct thread_data *td, struct io_log *log, const char *name)
 {
 	finish_log_named(td, log, td->o.name, name);
+}
+
+#ifdef CONFIG_ZLIB
+static void __add_log_sample_gz(struct io_log *iolog, struct io_sample *s)
+{
+	int ret;
+
+	iolog->stream.next_in = (void *) s;
+	iolog->stream.avail_in = sizeof(*s);
+
+	if (iolog->buf_size - iolog->stream.total_out < IOLOG_Z_WINDOW_MIN) {
+		void *new_buf;
+
+		iolog->buf_size += IOLOG_Z_WINDOW;
+		new_buf = realloc(iolog->buf, iolog->buf_size);
+		if (!new_buf) {
+			log_err("fio: failed extending iolog! Will stop logging.\n");
+			iolog->disabled = 1;
+			return;
+		}
+
+		iolog->buf = new_buf;
+	}
+
+	iolog->stream.avail_out = iolog->buf_size - iolog->stream.total_out;
+	iolog->stream.next_out = iolog->buf + iolog->stream.total_out;
+
+	ret = deflate(&iolog->stream, Z_NO_FLUSH);
+	if (ret < 0) {
+		log_err("fio: log deflation failed (%d)\n", ret);
+		iolog->disabled = 1;
+	}
+
+}
+#else
+static void __add_log_sample_plain(struct io_log *iolog, struct io_sample *s)
+{
+	const int nr_samples = iolog->nr_samples;
+
+	if (iolog->nr_samples == iolog->max_samples) {
+		unsigned long new_samples = (iolog->max_samples * 3) / 2;
+		int new_size = sizeof(struct io_sample) * new_samples;
+		void *new_log;
+
+		new_log = realloc(iolog->log, new_size);
+		if (!new_log) {
+			log_err("fio: failed extending iolog! Will stop logging.\n");
+			iolog->disabled = 1;
+			return;
+		}
+		iolog->log = new_log;
+		iolog->max_samples = new_samples;
+	}
+
+	memcpy(&iolog->log[nr_samples], s, sizeof(*s));
+}
+#endif
+
+void __add_log_sample(struct io_log *iolog, unsigned long val,
+		      enum fio_ddir ddir, unsigned int bs, unsigned long t)
+{
+	struct io_sample s;
+
+	if (iolog->disabled)
+		return;
+
+	if (!iolog->nr_samples)
+		iolog->avg_last = t;
+
+	s.time = cpu_to_le64(t);
+	s.val = cpu_to_le64(val);
+	s.ddir = __cpu_to_le32(ddir);
+	s.bs = cpu_to_le32(bs);
+
+#ifdef CONFIG_ZLIB
+	__add_log_sample_gz(iolog, &s);
+#else
+	__add_log_sample_plain(iolog, &s);
+#endif
+
+	iolog->nr_samples++;
 }

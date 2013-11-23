@@ -1133,81 +1133,104 @@ static int fio_send_cmd_ext_pdu(int sk, uint16_t opcode, const void *buf,
 	return fio_sendv_data(sk, iov, 2);
 }
 
-static int fio_send_iolog_gz(struct cmd_iolog_pdu *pdu, struct io_log *log)
+static int fio_send_iolog_gz(struct io_log *log)
 {
-	int ret = 0;
 #ifdef CONFIG_ZLIB
-	z_stream stream;
-	void *out_pdu;
-
-	/*
-	 * Dirty - since the log is potentially huge, compress it into
-	 * FIO_SERVER_MAX_FRAGMENT_PDU chunks and let the receiving
-	 * side defragment it.
-	 */
-	out_pdu = malloc(FIO_SERVER_MAX_FRAGMENT_PDU);
-
-	stream.zalloc = Z_NULL;
-	stream.zfree = Z_NULL;
-	stream.opaque = Z_NULL;
-
-	if (deflateInit(&stream, Z_DEFAULT_COMPRESSION) != Z_OK) {
-		ret = 1;
-		goto err;
-	}
-
-	stream.next_in = (void *) log->log;
-	stream.avail_in = log->nr_samples * sizeof(struct io_sample);
+	size_t total_output = log->stream.total_out;
+	void *buf = log->buf;
+	int err;
 
 	do {
-		unsigned int this_len, flags = 0;
-		int ret;
+		unsigned int this_bytes = total_output;
+		int flags = 0;
 
-		stream.avail_out = FIO_SERVER_MAX_FRAGMENT_PDU;
-		stream.next_out = out_pdu;
-		ret = deflate(&stream, Z_FINISH);
-		/* may be Z_OK, or Z_STREAM_END */
-		if (ret < 0)
-			goto err_zlib;
-
-		this_len = FIO_SERVER_MAX_FRAGMENT_PDU - stream.avail_out;
-
-		if (stream.avail_in)
+		if (this_bytes > FIO_SERVER_MAX_FRAGMENT_PDU) {
+			this_bytes = FIO_SERVER_MAX_FRAGMENT_PDU;
 			flags = FIO_NET_CMD_F_MORE;
+		}
 
-		ret = fio_send_cmd_ext_pdu(server_fd, FIO_NET_CMD_IOLOG,
-					   out_pdu, this_len, 0, flags);
-		if (ret)
-			goto err_zlib;
-	} while (stream.avail_in);
+		err = fio_send_cmd_ext_pdu(server_fd, FIO_NET_CMD_IOLOG, buf,
+						this_bytes, 0, flags);
+		if (err)
+			break;
 
-err_zlib:
-	deflateEnd(&stream);
-err:
-	free(out_pdu);
+		buf += this_bytes;
+		total_output -= this_bytes;
+	} while (total_output);
+
+	return err;
+#else
+	return 0;
 #endif
-	return ret;
+}
+
+static int fio_send_iolog_inflate(struct io_log *log)
+{
+#ifdef CONFIG_ZLIB
+	struct io_sample *samples;
+	unsigned int per_round;
+	z_stream out;
+	int err;
+
+	out.zalloc = Z_NULL;
+	out.zfree = Z_NULL;
+	out.opaque = Z_NULL;
+	out.avail_in = 0;
+	out.next_in = Z_NULL;
+
+	if (inflateInit(&out) != Z_OK) {
+		log_err("fio: log inflation init failed\n");
+		return 1;
+	}
+
+	per_round = FIO_SERVER_MAX_FRAGMENT_PDU / sizeof(struct io_sample);
+	samples = malloc(per_round * sizeof(struct io_sample));
+	out.avail_in = log->stream.total_out;
+	out.next_in = log->buf;
+
+	do {
+		unsigned int this_out, bytes;
+
+		this_out = per_round * sizeof(struct io_sample);
+		out.avail_out = this_out;
+		out.next_out = (void *) samples;
+		err = inflate(&out, Z_NO_FLUSH);
+		if (err < 0) {
+			log_err("fio: log inflation failed!\n");
+			break;
+		}
+
+		bytes = this_out - out.avail_out;
+		err = fio_send_cmd_ext_pdu(server_fd, FIO_NET_CMD_IOLOG,
+						samples, bytes, 0, 0);
+		if (err)
+			break;
+	} while (out.avail_in);
+
+	err = inflateEnd(&out);
+	if (err < 0)
+		log_err("fio: log end inflation failed\n");
+
+	return 0;
+#else
+	/*
+	 * Will never happen, since we only get the deflated log if we
+	 * have zlib already
+	 */
+	return 0;
+#endif
 }
 
 int fio_send_iolog(struct thread_data *td, struct io_log *log, const char *name)
 {
 	struct cmd_iolog_pdu pdu;
-	int i, ret = 0;
+	int ret = 0;
 
 	pdu.thread_number = cpu_to_le32(td->thread_number);
 	pdu.nr_samples = __cpu_to_le32(log->nr_samples);
 	pdu.log_type = cpu_to_le32(log->log_type);
 	pdu.compressed = cpu_to_le32(use_zlib);
 	strcpy((char *) pdu.name, name);
-
-	for (i = 0; i < log->nr_samples; i++) {
-		struct io_sample *s = &log->log[i];
-
-		s->time	= cpu_to_le64(s->time);
-		s->val	= cpu_to_le64(s->val);
-		s->ddir	= cpu_to_le32(s->ddir);
-		s->bs	= cpu_to_le32(s->bs);
-	}
 
 	/*
 	 * Send header first, it's not compressed.
@@ -1221,10 +1244,9 @@ int fio_send_iolog(struct thread_data *td, struct io_log *log, const char *name)
 	 * Now send actual log, compress if we can, otherwise just plain
 	 */
 	if (use_zlib)
-		return fio_send_iolog_gz(&pdu, log);
+		return fio_send_iolog_gz(log);
 
-	return fio_send_cmd_ext_pdu(server_fd, FIO_NET_CMD_IOLOG, log->log,
-			log->nr_samples * sizeof(struct io_sample), 0, 0);
+	return fio_send_iolog_inflate(log);
 }
 
 void fio_server_send_add_job(struct thread_data *td)

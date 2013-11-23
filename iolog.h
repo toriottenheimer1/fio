@@ -1,10 +1,19 @@
 #ifndef FIO_IOLOG_H
 #define FIO_IOLOG_H
 
+#ifdef CONFIG_ZLIB
+#include <zlib.h>
+#endif
 #include "lib/rbtree.h"
 #include "lib/ieee754.h"
 #include "flist.h"
 #include "ioengine.h"
+
+/*
+ * Compression windows
+ */
+#define IOLOG_Z_WINDOW		(64*1024U)
+#define IOLOG_Z_WINDOW_MIN	(512U)
 
 /*
  * Use for maintaining statistics
@@ -44,8 +53,16 @@ struct io_log {
 	 * Entries already logged
 	 */
 	unsigned long nr_samples;
+
+#ifdef CONFIG_ZLIB
+	void *buf;
+	unsigned long buf_size;
+
+	z_stream stream;
+#else
 	unsigned long max_samples;
 	struct io_sample *log;
+#endif
 
 	unsigned int log_type;
 
@@ -134,6 +151,9 @@ extern void __finish_log(struct io_log *, const char *);
 extern struct io_log *agg_io_log[DDIR_RWDIR_CNT];
 extern int write_bw_log;
 extern void add_agg_sample(unsigned long, enum fio_ddir, unsigned int);
+extern void __add_log_sample(struct io_log *iolog, unsigned long val,
+				enum fio_ddir ddir, unsigned int bs,
+				unsigned long t);
 
 static inline void init_ipo(struct io_piece *ipo)
 {
