@@ -518,7 +518,7 @@ int setup_log(struct io_log **log, unsigned long avg_msec, int log_type)
 	l->stream.zfree = Z_NULL;
 	l->stream.opaque = Z_NULL;
 
-	err = deflateInit2(&l->stream, Z_BEST_SPEED, Z_DEFLATED, 15, 8,
+	err = deflateInit2(&l->stream, Z_BEST_SPEED, Z_DEFLATED, -15, 8,
 				Z_DEFAULT_STRATEGY);
 	if (err < 0) {
 		log_err("fio: deflateInit2 failed (%d)\n", err);
@@ -529,12 +529,13 @@ int setup_log(struct io_log **log, unsigned long avg_msec, int log_type)
 #else
 	l->max_samples = 1024;
 	l->log = malloc(l->max_samples * sizeof(struct io_sample));
+	err = 0;
 #endif
 
 	l->log_type = log_type;
 	l->avg_msec = avg_msec;
 	*log = l;
-	return 0;
+	return err;
 }
 
 #define SAMPLES_PER_ROUND	64
