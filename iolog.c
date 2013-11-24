@@ -573,7 +573,7 @@ static void __finish_log_method(struct io_log *log, FILE *f)
 	out.avail_in = 0;
 	out.next_in = Z_NULL;
 
-	if (inflateInit(&out) != Z_OK) {
+	if (inflateInit2(&out, -15) != Z_OK) {
 		log_err("fio: log inflation init failed\n");
 		return;
 	}
