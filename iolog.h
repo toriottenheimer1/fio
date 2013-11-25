@@ -55,6 +55,10 @@ struct io_log {
 	unsigned long nr_samples;
 
 #ifdef CONFIG_ZLIB
+#define BATCH_SAMPLES 64
+	struct io_sample batch_samples[BATCH_SAMPLES];
+	unsigned int nr_batch_samples;
+
 	void *buf;
 	unsigned long buf_size;
 

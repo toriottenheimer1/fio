@@ -550,22 +550,79 @@ static void free_log(struct io_log *log)
 	free(log);
 }
 
+static void write_log_samples(FILE *f, struct io_sample *samples,
+			      unsigned long nr_samples)
+{
+	unsigned long i;
+
+	for (i = 0; i < nr_samples; i++) {
+		struct io_sample *s = &samples[i];
+
+		s->time = le64_to_cpu(s->time);
+		s->val = le64_to_cpu(s->val);
+		s->ddir = le32_to_cpu(s->ddir);
+		s->bs = le32_to_cpu(s->bs);
+
+		fprintf(f, "%lu, %lu, %u, %u\n",
+				(unsigned long) s->time, (unsigned long) s->val,
+				s->ddir, s->bs);
+	}
+}
+
 #ifdef CONFIG_ZLIB
+static void flush_batch_samples(struct io_log *iolog)
+{
+	int ret;
+
+	iolog->stream.next_in = (void *) iolog->batch_samples;
+	iolog->stream.avail_in = sizeof(struct io_sample) * iolog->nr_batch_samples;
+
+	if (iolog->buf_size - iolog->stream.total_out < IOLOG_Z_WINDOW_MIN) {
+		void *new_buf;
+
+		iolog->buf_size += IOLOG_Z_WINDOW;
+		new_buf = realloc(iolog->buf, iolog->buf_size);
+		if (!new_buf) {
+			log_err("fio: failed extending iolog! Will stop logging.\n");
+			iolog->disabled = 1;
+			return;
+		}
+
+		iolog->buf = new_buf;
+	}
+
+	iolog->stream.avail_out = iolog->buf_size - iolog->stream.total_out;
+	iolog->stream.next_out = iolog->buf + iolog->stream.total_out;
+
+	ret = deflate(&iolog->stream, Z_NO_FLUSH);
+	if (ret < 0) {
+		log_err("fio: log deflation failed (%d)\n", ret);
+		iolog->disabled = 1;
+	}
+
+	iolog->nr_batch_samples = 0;
+}
+
 static void __finish_log_method(struct io_log *log, FILE *f)
 {
 	struct io_sample *samples;
-	unsigned int i;
 	z_stream out;
 	int err;
 
 	/*
-	 * Finish deflation of the log
+	 * Finish deflation of the log, flush out any left batched
+	 * samples first.
 	 */
+	if (log->nr_batch_samples)
+		flush_batch_samples(log);
+
 	deflate(&log->stream, Z_FINISH);
 	deflateEnd(&log->stream);
 
 	if (!log->stream.total_out)
 		return;
+
+	printf("Compression level: 1 : %.2f\n", ((float) sizeof(struct io_sample) * log->nr_samples) / (float) log->buf_size);
 
 	out.zalloc = Z_NULL;
 	out.zfree = Z_NULL;
@@ -596,20 +653,7 @@ static void __finish_log_method(struct io_log *log, FILE *f)
 		}
 
 		nr = (this_out - out.avail_out) / sizeof(struct io_sample);
-
-		for (i = 0; i < nr; i++) {
-			struct io_sample *s = &samples[i];
-
-			s->time = le64_to_cpu(s->time);
-			s->val = le64_to_cpu(s->val);
-			s->ddir = le32_to_cpu(s->ddir);
-			s->bs = le32_to_cpu(s->bs);
-
-			fprintf(f, "%lu, %lu, %u, %u\n",
-					(unsigned long) s->time,
-					(unsigned long) s->val,
-					s->ddir, s->bs);
-		}
+		write_log_samples(f, samples, nr);
 	} while (out.avail_in);
 
 	err = inflateEnd(&out);
@@ -619,21 +663,7 @@ static void __finish_log_method(struct io_log *log, FILE *f)
 #else
 static void __finish_log_method(struct io_log *log, FILE *f)
 {
-	unsigned int i;
-
-	for (i = 0; i < log->nr_samples; i++) {
-		struct io_sample *s = &log->log[i];
-
-		s->time	= le64_to_cpu(s->time);
-		s->val	= le64_to_cpu(s->val);
-		s->ddir	= le32_to_cpu(s->ddir);
-		s->bs	= le32_to_cpu(s->bs);
-
-		fprintf(f, "%lu, %lu, %u, %u\n",
-				(unsigned long) s->time,
-				(unsigned long) s->val,
-				s->ddir, s->bs);
-	}
+	write_log_samples(f, log->log, log->nr_samples);
 }
 #endif
 
@@ -676,34 +706,11 @@ void finish_log(struct thread_data *td, struct io_log *log, const char *name)
 #ifdef CONFIG_ZLIB
 static void __add_log_sample_gz(struct io_log *iolog, struct io_sample *s)
 {
-	int ret;
+	if (iolog->nr_batch_samples == BATCH_SAMPLES)
+		flush_batch_samples(iolog);
 
-	iolog->stream.next_in = (void *) s;
-	iolog->stream.avail_in = sizeof(*s);
-
-	if (iolog->buf_size - iolog->stream.total_out < IOLOG_Z_WINDOW_MIN) {
-		void *new_buf;
-
-		iolog->buf_size += IOLOG_Z_WINDOW;
-		new_buf = realloc(iolog->buf, iolog->buf_size);
-		if (!new_buf) {
-			log_err("fio: failed extending iolog! Will stop logging.\n");
-			iolog->disabled = 1;
-			return;
-		}
-
-		iolog->buf = new_buf;
-	}
-
-	iolog->stream.avail_out = iolog->buf_size - iolog->stream.total_out;
-	iolog->stream.next_out = iolog->buf + iolog->stream.total_out;
-
-	ret = deflate(&iolog->stream, Z_NO_FLUSH);
-	if (ret < 0) {
-		log_err("fio: log deflation failed (%d)\n", ret);
-		iolog->disabled = 1;
-	}
-
+	memcpy(&iolog->batch_samples[iolog->nr_batch_samples], s, sizeof(*s));
+	++iolog->nr_batch_samples;
 }
 #else
 static void __add_log_sample_plain(struct io_log *iolog, struct io_sample *s)
