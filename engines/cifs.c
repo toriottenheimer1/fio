@@ -67,7 +67,7 @@ int fio_cifs_init(struct thread_data *td)
 
 	memset(ld, 0, sizeof(*ld));
 
-	log_info("Connecting to share: \\\\%s\\%s\n", o->host, o->share);
+	dprint(FD_FILE, "Connecting to share: \\\\%s\\%s\n", o->host, o->share);
 
 	// This is only used in the async client
 	ld->ev = samba_tevent_context_init(ld);
@@ -125,7 +125,7 @@ int fio_cifs_init(struct thread_data *td)
 		goto error;
 	}
 
-	log_info("Connected to share: \\\\%s\\%s\n", o->host, o->share);
+	dprint(FD_FILE, "Connected to share: \\\\%s\\%s\n", o->host, o->share);
 
 	td->io_ops->data = ld;
 	return 0;
@@ -178,7 +178,7 @@ int fio_cifs_open_file(struct thread_data *td, struct fio_file *f)
 		return ld->fnum;
 	}
 
-	log_info("Opened file: \\\\%s\\%s\%s\n", o->host, o->share,
+	dprint(FD_FILE, "Opened file: \\\\%s\\%s\%s\n", o->host, o->share,
 		f->file_name);
 
 	// Setup file (grow / shrink) if needed.
@@ -198,7 +198,7 @@ int fio_cifs_close_file(struct thread_data *td, struct fio_file *f)
 		return -EIO;
 	}
 
-	log_info("Closed file: \\\\%s\\%s\%s\n", o->host, o->share,
+	dprint(FD_FILE, "Closed file: \\\\%s\\%s\%s\n", o->host, o->share,
 		f->file_name);
 
 	return 0;
@@ -219,8 +219,8 @@ int fio_cifs_unlink_file(struct thread_data *td, struct fio_file *f)
 		return -EIO;
 	}
 
-	log_info("Deleted file: \\\\%s\\%s\%s\n", o->host, o->share,
-		 f->file_name);
+	dprint(FD_FILE, "Deleted file: \\\\%s\\%s\%s\n", o->host, o->share,
+		f->file_name);
 
 	return 0;
 }
@@ -245,7 +245,7 @@ int fio_cifs_get_file_size(struct thread_data *td, struct fio_file *f)
 		return -EIO;
 	}
 
-	log_info("stat: \\\\%s\\%s\%s\n", o->host, o->share,
+	dprint(FD_FILE, "stat: \\\\%s\\%s\%s\n", o->host, o->share,
 		f->file_name);
 
 	f->real_file_size = size;
