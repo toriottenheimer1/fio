@@ -163,6 +163,8 @@ for opt do
   ;;
   --enable-libhdfs) libhdfs="yes"
   ;;
+  --disable-cifs) disable_cifs="yes"
+  ;;
   --help)
     show_help="yes"
     ;;
@@ -1270,6 +1272,35 @@ if test "$libhdfs" = "yes" ; then
 fi
 echo "HDFS engine                   $libhdfs"
 
+##########################################
+# Check if we have the right samba libraries for CIFS
+# Need path to headers with SMBCLI_CFLAGS
+cifs="no"
+cat > $TMPC << EOF
+#include <stdbool.h>
+#include <stdint.h>
+
+#include <samba_util.h>
+#include <smb_cli.h>
+
+int main(int argc, char **argv)
+{
+  struct smbcli_state *s = smbcli_state_init(NULL);
+  return 0;
+}
+EOF
+SMBCLI_LIBS=$(pkg-config --libs netapi smbclient smbclient-raw dcerpc samba-hostconfig samba-credentials gensec)
+SMBCLI_CFLAGS=$(pkg-config --cflags netapi smbclient smbclient-raw dcerpc samba-hostconfig samba-credentials gensec)
+if test "$disable_cifs" != "yes"  && compile_prog "$SMBCLI_CFLAGS" "$SMBCLI_LIBS" "cifs"; then
+  LIBS="$LIBS $SMBCLI_LIBS"
+  # TODO: Figure out how to make this work
+  LIBS="$LIBS -Wl,-rpath /usr/lib/x86_64-linux-gnu/samba /usr/lib/x86_64-linux-gnu/samba/liberrors.so.0 /usr/lib/x86_64-linux-gnu/samba/libcli-ldap.so.0"
+  CFLAGS="$CFLAGS $SMBCLI_CFLAGS"
+  cifs="yes"
+fi
+ echo "Samba CIFS client            $cifs"
+
+
 #############################################################################
 
 if test "$wordsize" = "64" ; then
@@ -1413,6 +1444,9 @@ if test "$gf_fadvise" = "yes" ; then
 fi
 if test "$libhdfs" = "yes" ; then
   output_sym "CONFIG_LIBHDFS"
+fi
+if test "$cifs" = "yes"; then
+  output_sym "CONFIG_CIFS"
 fi
 
 if test "$zlib" = "no" ; then

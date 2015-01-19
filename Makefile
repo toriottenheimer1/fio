@@ -107,6 +107,10 @@ ifdef CONFIG_GFAPI
     CFLAGS += "-DGFAPI_USE_FADVISE"
   endif
 endif
+ifdef CONFIG_CIFS
+  SOURCE += engines/cifs.c
+  SOURCE += engines/cifs_sync.c
+endif
 
 ifeq ($(CONFIG_TARGET_OS), Linux)
   SOURCE += diskutil.c fifo.c blktrace.c cgroup.c trim.c engines/sg.c \
