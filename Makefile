@@ -108,8 +108,13 @@ ifdef CONFIG_GFAPI
   endif
 endif
 ifdef CONFIG_CIFS
+ifdef CONFIG_CIFS_EXTERNAL
+  EXT_SOURCE += engines/cifs.c
+  EXT_SOURCE += engines/cifs_sync.c
+else
   SOURCE += engines/cifs.c
   SOURCE += engines/cifs_sync.c
+endif
 endif
 
 ifeq ($(CONFIG_TARGET_OS), Linux)
@@ -253,7 +258,11 @@ mandir = $(prefix)/man
 sharedir = $(prefix)/share/fio
 endif
 
-all: $(PROGS) $(T_TEST_PROGS) $(SCRIPTS) FORCE
+ifdef CONFIG_CIFS_EXTERNAL
+EXT_ENGINES = cifs.so
+endif
+
+all: $(PROGS) $(T_TEST_PROGS) $(SCRIPTS) FORCE $(EXT_ENGINES)
 
 .PHONY: all install clean
 .PHONY: FORCE cscope
@@ -297,6 +306,9 @@ exp/test-expression-parser: exp/test-expression-parser.o
 
 parse.o: lex.yy.o y.tab.o
 endif
+
+cifs.so: engines/cifs.c engines/cifs_sync.c
+	$(QUIET_CC)$(CC) -o cifs.so -shared -rdynamic -fPIC $(CFLAGS) $(CPPFLAGS) engines/cifs.c engines/cifs_sync.c
 
 init.o: FIO-VERSION-FILE init.c
 	$(QUIET_CC)$(CC) -o init.o $(CFLAGS) $(CPPFLAGS) -c init.c
@@ -358,7 +370,7 @@ t/fio-dedupe: $(T_DEDUPE_OBJS)
 	$(QUIET_LINK)$(CC) $(LDFLAGS) $(CFLAGS) -o $@ $(T_DEDUPE_OBJS) $(LIBS)
 
 clean: FORCE
-	@rm -f .depend $(FIO_OBJS) $(GFIO_OBJS) $(OBJS) $(T_OBJS) $(PROGS) $(T_PROGS) $(T_TEST_PROGS) core.* core gfio FIO-VERSION-FILE *.d lib/*.d crc/*.d engines/*.d profiles/*.d t/*.d config-host.mak config-host.h y.tab.[ch] lex.yy.c exp/*.[do] lexer.h
+	@rm -f .depend $(FIO_OBJS) $(GFIO_OBJS) $(OBJS) $(T_OBJS) $(PROGS) $(T_PROGS) $(T_TEST_PROGS) core.* core gfio FIO-VERSION-FILE *.d lib/*.d crc/*.d engines/*.d profiles/*.d t/*.d config-host.mak config-host.h y.tab.[ch] lex.yy.c exp/*.[do] lexer.h *.so
 
 distclean: clean FORCE
 	@rm -f cscope.out fio.pdf fio_generate_plots.pdf fio2gnuplot.pdf

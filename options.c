@@ -1549,7 +1549,7 @@ struct fio_option fio_options[FIO_MAX_OPTS] = {
 			  },
 #endif
 #ifdef CONFIG_CIFS
-			  { .ival = "cifs",
+			  { .ival = "cifs_sync",
 			    .help = "CIFS Samba client"
 			  },
 #endif

@@ -61,7 +61,10 @@ static int fio_cifs_queue(struct thread_data *td, struct io_u *io_u)
 	return fio_io_end(td, io_u, ret);
 }
 
-static struct ioengine_ops ioengine = {
+#ifndef CONFIG_CIFS_EXTERNAL
+static
+#endif
+struct ioengine_ops ioengine = {
 	.name			= "cifs_sync",
 	.version		= FIO_IOOPS_VERSION,
 	.init			= fio_cifs_init,
@@ -76,6 +79,7 @@ static struct ioengine_ops ioengine = {
 	.flags			= FIO_SYNCIO | FIO_DISKLESSIO,
 };
 
+#ifndef CONFIG_CIFS_EXTERNAL
 static void fio_init fio_cifs_register(void)
 {
 	register_ioengine(&ioengine);
@@ -85,3 +89,4 @@ static void fio_exit fio_cifs_unregister(void)
 {
 	unregister_ioengine(&ioengine);
 }
+#endif

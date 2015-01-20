@@ -135,6 +135,7 @@ show_help="no"
 exit_val=0
 gfio_check="no"
 libhdfs="no"
+cifs_external="no"
 
 # parse options
 for opt do
@@ -167,6 +168,8 @@ for opt do
   ;;
   --disable-cifs) disable_cifs="yes"
   ;;
+  --cifs-external) external_cifs="yes"
+  ;;
   --help)
     show_help="yes"
     ;;
@@ -187,6 +190,8 @@ if test "$show_help" = "yes" ; then
   echo "--enable-gfio          Enable building of gtk gfio"
   echo "--disable-numa         Disable libnuma even if found"
   echo "--enable-libhdfs       Enable hdfs support"
+  echo "--disable-cifs         Disable CIFS support"
+  echo "--cifs-external        Build CIFS as an external engine"
   exit $exit_val
 fi
 
@@ -1610,6 +1615,9 @@ if test "$arith" = "yes" ; then
 fi
 if test "$cifs" = "yes"; then
   output_sym "CONFIG_CIFS"
+  if test "$external_cifs" = "yes" ; then
+    output_sym "CONFIG_CIFS_EXTERNAL"
+  fi
 fi
 
 if test "$zlib" = "no" ; then
