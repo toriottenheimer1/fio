@@ -1548,6 +1548,11 @@ struct fio_option fio_options[FIO_MAX_OPTS] = {
 			    .help = "Hadoop Distributed Filesystem (HDFS) engine"
 			  },
 #endif
+#ifdef CONFIG_CIFS
+			  { .ival = "cifs",
+			    .help = "CIFS Samba client"
+			  },
+#endif
 			  { .ival = "external",
 			    .help = "Load external engine (append name)",
 			  },

@@ -1,0 +1,21 @@
+# Test opening a file from multiple jobs.
+# Originally authored by Castor Fu
+[global]
+ioengine=cifs_sync
+hostname=localhost
+username=fio_smb_user
+password=fio_password
+share=fio_share
+thread=1
+create_on_open=1
+
+time_based=1
+runtime=10m
+ramp_time=1m
+
+[remote file]
+rw=randread
+size=1280m
+bs=4k
+random_distribution=zipf:0.25
+filename_format=fio_run.$filenum
