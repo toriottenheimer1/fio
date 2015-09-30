@@ -31,7 +31,6 @@
 int main(int argc, char *argv[], char *envp[])
 {
 	int ret = 1;
-	setvbuf (stdout, NULL, _IOLBF, 0);  /* line buffer stdout to avoid output lines from multiple threads getting mixed */
 
 	if (initialize_fio(envp))
 		return 1;
@@ -42,6 +41,12 @@ int main(int argc, char *argv[], char *envp[])
 
 	if (parse_options(argc, argv))
 		goto done;
+
+	/*
+	 * line buffer stdout to avoid output lines from multiple
+	 * threads getting mixed
+	 */
+	setvbuf(stdout, NULL, _IOLBF, 0);
 
 	fio_time_init();
 
