@@ -126,11 +126,15 @@ re_read:
 		p = buf;
 		events = 0;
 		for_each_file(td, f, i) {
-			for (eventNum=0; eventNum < left; eventNum++) {
+			for (eventNum = 0; eventNum < left; eventNum++) {
 				ret = read(f->fd, p, sizeof(struct sg_io_hdr));
 				dprint(FD_IO, "sgio_getevents: ret: %d\n", ret);
 				if (ret < 0) {
-					if (errno == EAGAIN || errno == EINTR)  // not sure if EINTR is needed, but seems like it should be.
+					/*
+					 *  not sure if EINTR is needed,
+					 *  but seems like it should be.
+					 */
+					if (errno == EAGAIN || errno == EINTR)
 						continue;
 					r = -errno;
 					td_verror(td, errno, "read");
@@ -157,12 +161,9 @@ re_read:
 			struct sg_io_hdr *hdr = (struct sg_io_hdr *) buf + i;
 			sd->events[i] = hdr->usr_ptr;
 
-			// record if an io error occurred
-			if (hdr->info & SG_INFO_CHECK) { // || hdr->resid != 0) { doc indicates that resid can lie, so we won't check
+			/* record if an io error occurred, ignore resid */
+			if (hdr->info & SG_INFO_CHECK) {
 				struct io_u *io_u;
-				//printf("cmd: 0x%02x  info: 0x%02x  masked: 0x%02x  host: 0x%02x  driver: 0x%02x  sb_len_wr: 0x%02x  resid: 0x%02x\n",
-				//		hdr->cmdp[0], hdr->info, hdr->masked_status, hdr->host_status, hdr->driver_status, hdr->sb_len_wr, hdr->resid);
-				// copy the hdr data back into the completed io_u structure so error details can be post processed.
 				io_u = (struct io_u *)(hdr->usr_ptr);
 				memcpy((void*)&(io_u->hdr), (void*)hdr, sizeof(struct sg_io_hdr));
 				sd->events[i]->error = EIO;
@@ -196,10 +197,9 @@ static int fio_sgio_ioctl_doio(struct thread_data *td,
 	if (ret < 0)
 		return ret;
 
-	// record if an io error occurred
-	if (hdr->info & SG_INFO_CHECK) {
+	/* record if an io error occurred */
+	if (hdr->info & SG_INFO_CHECK)
 		io_u->error = EIO;
-	}
 
 	return FIO_Q_COMPLETED;
 }
@@ -218,10 +218,10 @@ static int fio_sgio_rw_doio(struct fio_file *f, struct io_u *io_u, int do_sync)
 		if (ret < 0)
 			return ret;
 
-		// record if an io error occurred
-		if (hdr->info & SG_INFO_CHECK) {
+		/* record if an io error occurred */
+		if (hdr->info & SG_INFO_CHECK)
 			io_u->error = EIO;
-		}
+
 		return FIO_Q_COMPLETED;
 	}
 
@@ -236,10 +236,10 @@ static int fio_sgio_doio(struct thread_data *td, struct io_u *io_u, int do_sync)
 	if (f->filetype == FIO_TYPE_BD) {
 		ret = fio_sgio_ioctl_doio(td, f, io_u);
 		td->error = io_u->error;
-	}
-	else {
+	} else {
 		ret = fio_sgio_rw_doio(f, io_u, do_sync);
-		if (do_sync) td->error = io_u->error;
+		if (do_sync)
+			td->error = io_u->error;
 	}
 
 	return ret;
@@ -263,22 +263,31 @@ static int fio_sgio_prep(struct thread_data *td, struct io_u *io_u)
 		sgio_hdr_init(sd, hdr, io_u, 1);
 
 		hdr->dxfer_direction = SG_DXFER_FROM_DEV;
-		if (lba < MAX_10B_LBA) hdr->cmdp[0] = 0x28; // read(10)
-		else                   hdr->cmdp[0] = 0x88; // read(16)
+		if (lba < MAX_10B_LBA)
+			hdr->cmdp[0] = 0x28; // read(10)
+		else
+			hdr->cmdp[0] = 0x88; // read(16)
 	} else if (io_u->ddir == DDIR_WRITE) {
 		sgio_hdr_init(sd, hdr, io_u, 1);
 
 		hdr->dxfer_direction = SG_DXFER_TO_DEV;
-		if (lba < MAX_10B_LBA) hdr->cmdp[0] = 0x2a; // write(10)
-		else                   hdr->cmdp[0] = 0x8a; // write(16)
+		if (lba < MAX_10B_LBA)
+			hdr->cmdp[0] = 0x2a; // write(10)
+		else
+			hdr->cmdp[0] = 0x8a; // write(16)
 	} else {
 		sgio_hdr_init(sd, hdr, io_u, 0);
 		hdr->dxfer_direction = SG_DXFER_NONE;
-		if (lba < MAX_10B_LBA) hdr->cmdp[0] = 0x35; // synccache(10)
-		else                   hdr->cmdp[0] = 0x91; // synccache(16)
+		if (lba < MAX_10B_LBA)
+			hdr->cmdp[0] = 0x35; // synccache(10)
+		else
+			hdr->cmdp[0] = 0x91; // synccache(16)
 	}
 
-	// for synccache, we leave lba and length to 0 to sync all blocks on medium.
+	/*
+	 * for synccache, we leave lba and length to 0 to sync all
+	 * blocks on medium.
+	 */
 	if (hdr->dxfer_direction != SG_DXFER_NONE) {
 
 		if (lba < MAX_10B_LBA) {
@@ -288,8 +297,7 @@ static int fio_sgio_prep(struct thread_data *td, struct io_u *io_u)
 			hdr->cmdp[5] = (unsigned char) (lba & 0xff);
 			hdr->cmdp[7] = (unsigned char) ((nr_blocks >> 8) & 0xff);
 			hdr->cmdp[8] = (unsigned char) (nr_blocks & 0xff);
-		}
-		else {
+		} else {
 			hdr->cmdp[2] = (unsigned char) ((lba >> 56) & 0xff);
 			hdr->cmdp[3] = (unsigned char) ((lba >> 48) & 0xff);
 			hdr->cmdp[4] = (unsigned char) ((lba >> 40) & 0xff);
@@ -343,9 +351,13 @@ static struct io_u *fio_sgio_event(struct thread_data *td, int event)
 	return sd->events[event];
 }
 
-static int fio_sgio_read_capacity(struct thread_data *td, unsigned int *bs, unsigned long long *max_lba)
+static int fio_sgio_read_capacity(struct thread_data *td, unsigned int *bs,
+				  unsigned long long *max_lba)
 {
-	// need to do read capacity operation w/o benifit of sd or io_u structures, which are not initialized until later.
+	/*
+	 * need to do read capacity operation w/o benefit of sd or
+	 * io_u structures, which are not initialized until later.
+	 */
 	struct sg_io_hdr hdr;
 	unsigned char cmd[16];
 	unsigned char sb[64];
@@ -355,18 +367,17 @@ static int fio_sgio_read_capacity(struct thread_data *td, unsigned int *bs, unsi
 
 	struct fio_file *f = td->files[0];
 
-	// open file independent of rest of application
+	/* open file independent of rest of application */
 	fd = open(f->file_name, O_RDONLY);
-	if (fd < 0) {
+	if (fd < 0)
 		return -errno;
-	}
 
 	memset(&hdr, 0, sizeof(hdr));
 	memset(cmd, 0, sizeof(cmd));
 	memset(sb, 0, sizeof(sb));
 	memset(buf, 0, sizeof(buf));
 
-	// First let's try a 10 byte read capacity.
+	/* First let's try a 10 byte read capacity. */
 	hdr.interface_id = 'S';
 	hdr.cmdp = cmd;
 	hdr.cmd_len = 10;
@@ -383,11 +394,15 @@ static int fio_sgio_read_capacity(struct thread_data *td, unsigned int *bs, unsi
 		close(fd);
 		return ret;
 	}
-	*bs		 = (buf[4] << 24) | (buf[5] << 16) | (buf[6] << 8) | buf[7];
+
+	*bs	 = (buf[4] << 24) | (buf[5] << 16) | (buf[6] << 8) | buf[7];
 	*max_lba = ((buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3]) & 0x00000000FFFFFFFFULL;  // for some reason max_lba is being sign extended even though unsigned.
 
 
-	// If max lba is 0xFFFFFFFF, then need to retry with 16 byte read capacity
+	/*
+	 * If max lba is 0xFFFFFFFF, then need to retry with
+	 * 16 byteread capacity
+	 */
 	if (*max_lba == MAX_10B_LBA) {
 		hdr.cmd_len = 16;
 		hdr.cmdp[0] = 0x9e; // Read Capacity(16)
@@ -407,10 +422,9 @@ static int fio_sgio_read_capacity(struct thread_data *td, unsigned int *bs, unsi
 			return ret;
 		}
 
-		// record if an io error occurred
-		if (hdr.info & SG_INFO_CHECK) {
-			td->error = EIO;
-		}
+		/* record if an io error occurred */
+		if (hdr.info & SG_INFO_CHECK)
+			td_verror(td, EIO, "fio_sgio_read_capacity");
 
 		*bs = (buf[8] << 24) | (buf[9] << 16) | (buf[10] << 8) | buf[11];
 		*max_lba = ((unsigned long long)buf[0] << 56) |
@@ -421,11 +435,9 @@ static int fio_sgio_read_capacity(struct thread_data *td, unsigned int *bs, unsi
 				((unsigned long long)buf[5] << 16) |
 				((unsigned long long)buf[6] << 8) |
 				(unsigned long long)buf[7];
-		//printf("cmd: 0x%02x  status: 0x%02x\n", hdr->cmdp[0], hdr->status);
 	}
 
 	close(fd);
-
 	return 0;
 }
 
@@ -535,65 +547,72 @@ static int fio_sgio_open(struct thread_data *td, struct fio_file *f)
 	return 0;
 }
 
-
-#ifndef HAVE_STRLCAT
-size_t strlcat(char *dst, const char *src, size_t size)
-{
-	size_t dstlen;
-	size_t srclen;
-
-	dstlen = strlen(dst);
-	size -= dstlen + 1;
-
-	if (!size) return (dstlen); // return if no room
-
-	srclen = strlen(src);
-	if (srclen > size) srclen = size;
-
-	memcpy(dst + dstlen, src, srclen);
-	dst[dstlen + srclen] = '\0';
-
-	return (dstlen + srclen);
-}
-#endif /* !HAVE_STRLCAT */
-
 /*
- * Build an error string with details about the driver, host or scsi error contained in the sg header
- * Caller will use as necessary.
+ * Build an error string with details about the driver, host or scsi
+ * error contained in the sg header Caller will use as necessary.
  */
-static const char *fio_sgio_errdetails(struct io_u *io_u)
+static char *fio_sgio_errdetails(struct io_u *io_u)
 {
 	struct sg_io_hdr *hdr = &io_u->hdr;
-	const char *ret = "SG Driver did not report a Host, Driver or Device check";
 #define MAXERRDETAIL 1024
 #define MAXMSGCHUNK  128
-	static char msg[MAXERRDETAIL];
-	static char msgchunk[MAXMSGCHUNK];
+	char *msg, msgchunk[MAXMSGCHUNK], *ret = NULL;
 	int i;
-	msg[0] = '\0';
 
-	// can't seem to find sg_err.h, so I'll just echo the define values so others can search on
-	// internet to find clearer clues of meaning.
+	msg = calloc(MAXERRDETAIL, 1);
+
+	/*
+	 * can't seem to find sg_err.h, so I'll just echo the define values
+	 * so others can search on internet to find clearer clues of meaning.
+	 */
 	if (hdr->info & SG_INFO_CHECK) {
 		ret = msg;
 		if (hdr->host_status) {
 			snprintf(msgchunk, MAXMSGCHUNK, "SG Host Status: 0x%02x; ", hdr->host_status);
 			strlcat(msg, msgchunk, MAXERRDETAIL);
 			switch (hdr->host_status) {
-			case 0x01: strlcat(msg, "SG_ERR_DID_NO_CONNECT", MAXERRDETAIL); break;
-			case 0x02: strlcat(msg, "SG_ERR_DID_BUS_BUSY", MAXERRDETAIL); break;
-			case 0x03: strlcat(msg, "SG_ERR_DID_TIME_OUT", MAXERRDETAIL); break;
-			case 0x04: strlcat(msg, "SG_ERR_DID_BAD_TARGET", MAXERRDETAIL); break;
-			case 0x05: strlcat(msg, "SG_ERR_DID_ABORT", MAXERRDETAIL); break;
-			case 0x06: strlcat(msg, "SG_ERR_DID_PARITY", MAXERRDETAIL); break;
-			case 0x07: strlcat(msg, "SG_ERR_DID_ERROR (internal error)", MAXERRDETAIL); break;
-			case 0x08: strlcat(msg, "SG_ERR_DID_RESET", MAXERRDETAIL); break;
-			case 0x09: strlcat(msg, "SG_ERR_DID_BAD_INTR (unexpected)", MAXERRDETAIL); break;
-			case 0x0a: strlcat(msg, "SG_ERR_DID_PASSTHROUGH", MAXERRDETAIL); break;
-			case 0x0b: strlcat(msg, "SG_ERR_DID_SOFT_ERROR (driver retry?)", MAXERRDETAIL); break;
-			case 0x0c: strlcat(msg, "SG_ERR_DID_IMM_RETRY", MAXERRDETAIL); break;
-			case 0x0d: strlcat(msg, "SG_ERR_DID_REQUEUE", MAXERRDETAIL); break;
-			default: strlcat(msg, "Unknown", MAXERRDETAIL); break;
+			case 0x01:
+				strlcat(msg, "SG_ERR_DID_NO_CONNECT", MAXERRDETAIL);
+				break;
+			case 0x02:
+				strlcat(msg, "SG_ERR_DID_BUS_BUSY", MAXERRDETAIL);
+				break;
+			case 0x03:
+				strlcat(msg, "SG_ERR_DID_TIME_OUT", MAXERRDETAIL);
+				break;
+			case 0x04:
+				strlcat(msg, "SG_ERR_DID_BAD_TARGET", MAXERRDETAIL);
+				break;
+			case 0x05:
+				strlcat(msg, "SG_ERR_DID_ABORT", MAXERRDETAIL);
+				break;
+			case 0x06:
+				strlcat(msg, "SG_ERR_DID_PARITY", MAXERRDETAIL);
+				break;
+			case 0x07:
+				strlcat(msg, "SG_ERR_DID_ERROR (internal error)", MAXERRDETAIL);
+				break;
+			case 0x08:
+				strlcat(msg, "SG_ERR_DID_RESET", MAXERRDETAIL);
+				break;
+			case 0x09:
+				strlcat(msg, "SG_ERR_DID_BAD_INTR (unexpected)", MAXERRDETAIL);
+				break;
+			case 0x0a:
+				strlcat(msg, "SG_ERR_DID_PASSTHROUGH", MAXERRDETAIL);
+				break;
+			case 0x0b:
+				strlcat(msg, "SG_ERR_DID_SOFT_ERROR (driver retry?)", MAXERRDETAIL);
+				break;
+			case 0x0c:
+				strlcat(msg, "SG_ERR_DID_IMM_RETRY", MAXERRDETAIL);
+				break;
+			case 0x0d:
+				strlcat(msg, "SG_ERR_DID_REQUEUE", MAXERRDETAIL);
+				break;
+			default:
+				strlcat(msg, "Unknown", MAXERRDETAIL);
+				break;
 			}
 			strlcat(msg, ". ", MAXERRDETAIL);
 		}
@@ -601,23 +620,51 @@ static const char *fio_sgio_errdetails(struct io_u *io_u)
 			snprintf(msgchunk, MAXMSGCHUNK, "SG Driver Status: 0x%02x; ", hdr->driver_status);
 			strlcat(msg, msgchunk, MAXERRDETAIL);
 			switch (hdr->driver_status & 0x0F) {
-			case 0x01: strlcat(msg, "SG_ERR_DRIVER_BUSY", MAXERRDETAIL); break;
-			case 0x02: strlcat(msg, "SG_ERR_DRIVER_SOFT", MAXERRDETAIL); break;
-			case 0x03: strlcat(msg, "SG_ERR_DRIVER_MEDIA", MAXERRDETAIL); break;
-			case 0x04: strlcat(msg, "SG_ERR_DRIVER_ERROR", MAXERRDETAIL); break;
-			case 0x05: strlcat(msg, "SG_ERR_DRIVER_INVALID", MAXERRDETAIL); break;
-			case 0x06: strlcat(msg, "SG_ERR_DRIVER_TIMEOUT", MAXERRDETAIL); break;
-			case 0x07: strlcat(msg, "SG_ERR_DRIVER_HARD", MAXERRDETAIL); break;
-			case 0x08: strlcat(msg, "SG_ERR_DRIVER_SENSE", MAXERRDETAIL); break;
-			default: strlcat(msg, "Unknown", MAXERRDETAIL); break;
+			case 0x01:
+				strlcat(msg, "SG_ERR_DRIVER_BUSY", MAXERRDETAIL);
+				break;
+			case 0x02:
+				strlcat(msg, "SG_ERR_DRIVER_SOFT", MAXERRDETAIL);
+				break;
+			case 0x03:
+				strlcat(msg, "SG_ERR_DRIVER_MEDIA", MAXERRDETAIL);
+				break;
+			case 0x04:
+				strlcat(msg, "SG_ERR_DRIVER_ERROR", MAXERRDETAIL);
+				break;
+			case 0x05:
+				strlcat(msg, "SG_ERR_DRIVER_INVALID", MAXERRDETAIL);
+				break;
+			case 0x06:
+				strlcat(msg, "SG_ERR_DRIVER_TIMEOUT", MAXERRDETAIL);
+				break;
+			case 0x07:
+				strlcat(msg, "SG_ERR_DRIVER_HARD", MAXERRDETAIL);
+				break;
+			case 0x08:
+				strlcat(msg, "SG_ERR_DRIVER_SENSE", MAXERRDETAIL);
+				break;
+			default:
+				strlcat(msg, "Unknown", MAXERRDETAIL);
+				break;
 			}
 			strlcat(msg, "; ", MAXERRDETAIL);
 			switch (hdr->driver_status & 0xF0) {
-			case 0x10: strlcat(msg, "SG_ERR_SUGGEST_RETRY", MAXERRDETAIL); break;
-			case 0x20: strlcat(msg, "SG_ERR_SUGGEST_ABORT", MAXERRDETAIL); break;
-			case 0x30: strlcat(msg, "SG_ERR_SUGGEST_REMAP", MAXERRDETAIL); break;
-			case 0x40: strlcat(msg, "SG_ERR_SUGGEST_DIE", MAXERRDETAIL); break;
-			case 0x80: strlcat(msg, "SG_ERR_SUGGEST_SENSE", MAXERRDETAIL); break;
+			case 0x10:
+				strlcat(msg, "SG_ERR_SUGGEST_RETRY", MAXERRDETAIL);
+				break;
+			case 0x20:
+				strlcat(msg, "SG_ERR_SUGGEST_ABORT", MAXERRDETAIL);
+				break;
+			case 0x30:
+				strlcat(msg, "SG_ERR_SUGGEST_REMAP", MAXERRDETAIL);
+				break;
+			case 0x40:
+				strlcat(msg, "SG_ERR_SUGGEST_DIE", MAXERRDETAIL);
+				break;
+			case 0x80:
+				strlcat(msg, "SG_ERR_SUGGEST_SENSE", MAXERRDETAIL);
+				break;
 			}
 			strlcat(msg, ". ", MAXERRDETAIL);
 		}
@@ -626,24 +673,46 @@ static const char *fio_sgio_errdetails(struct io_u *io_u)
 			strlcat(msg, msgchunk, MAXERRDETAIL);
 			// SCSI 3 status codes
 			switch (hdr->status) {
-			case 0x02: strlcat(msg, "CHECK_CONDITION", MAXERRDETAIL); break;
-			case 0x04: strlcat(msg, "CONDITION_MET", MAXERRDETAIL); break;
-			case 0x08: strlcat(msg, "BUSY", MAXERRDETAIL); break;
-			case 0x10: strlcat(msg, "INTERMEDIATE", MAXERRDETAIL); break;
-			case 0x14: strlcat(msg, "INTERMEDIATE_CONDITION_MET", MAXERRDETAIL); break;
-			case 0x18: strlcat(msg, "RESERVATION_CONFLICT", MAXERRDETAIL); break;
-			case 0x22: strlcat(msg, "COMMAND_TERMINATED", MAXERRDETAIL); break;
-			case 0x28: strlcat(msg, "TASK_SET_FULL", MAXERRDETAIL); break;
-			case 0x30: strlcat(msg, "ACA_ACTIVE", MAXERRDETAIL); break;
-			case 0x40: strlcat(msg, "TASK_ABORTED", MAXERRDETAIL); break;
-			default: strlcat(msg, "Unknown", MAXERRDETAIL); break;
+			case 0x02:
+				strlcat(msg, "CHECK_CONDITION", MAXERRDETAIL);
+				break;
+			case 0x04:
+				strlcat(msg, "CONDITION_MET", MAXERRDETAIL);
+				break;
+			case 0x08:
+				strlcat(msg, "BUSY", MAXERRDETAIL);
+				break;
+			case 0x10:
+				strlcat(msg, "INTERMEDIATE", MAXERRDETAIL);
+				break;
+			case 0x14:
+				strlcat(msg, "INTERMEDIATE_CONDITION_MET", MAXERRDETAIL);
+				break;
+			case 0x18:
+				strlcat(msg, "RESERVATION_CONFLICT", MAXERRDETAIL);
+				break;
+			case 0x22:
+				strlcat(msg, "COMMAND_TERMINATED", MAXERRDETAIL);
+				break;
+			case 0x28:
+				strlcat(msg, "TASK_SET_FULL", MAXERRDETAIL);
+				break;
+			case 0x30:
+				strlcat(msg, "ACA_ACTIVE", MAXERRDETAIL);
+				break;
+			case 0x40:
+				strlcat(msg, "TASK_ABORTED", MAXERRDETAIL);
+				break;
+			default:
+				strlcat(msg, "Unknown", MAXERRDETAIL);
+				break;
 			}
 			strlcat(msg, ". ", MAXERRDETAIL);
 		}
 		if (hdr->sb_len_wr) {
 			snprintf(msgchunk, MAXMSGCHUNK, "Sense Data (%d bytes):", hdr->sb_len_wr);
 			strlcat(msg, msgchunk, MAXERRDETAIL);
-			for (i=0; i<hdr->sb_len_wr; i++) {
+			for (i = 0; i < hdr->sb_len_wr; i++) {
 				snprintf(msgchunk, MAXMSGCHUNK, " %02x", hdr->sbp[i]);
 				strlcat(msg, msgchunk, MAXERRDETAIL);
 			}
@@ -656,22 +725,29 @@ static const char *fio_sgio_errdetails(struct io_u *io_u)
 		}
 	}
 
+	if (!ret)
+		ret = strdup("SG Driver did not report a Host, Driver or Device check");
+
 	return ret;
 }
-
 
 /*
  * get max file size from read capacity.
  */
 static int fio_sgio_get_file_size(struct thread_data *td, struct fio_file *f)
 {
-	// get_file_size is being called even before sgio_init is called, so none of the sg_io structures are
-	// initialized in the thread_data yet.  So we need to do the ReadCapacity without any of those helpers.
-	// One of the effects is that ReadCapacity may get called 4 times on each open:
-	//   readcap(10) followed by readcap(16) if needed - just to get the file size
-	//   after the init occurs - it will be called again when "type_check" is called during structure initialization
-	// I'm not sure how to prevent this little inefficiency.
-
+	/*
+	 * get_file_size is being called even before sgio_init is
+	 * called, so none of the sg_io structures are
+	 * initialized in the thread_data yet.  So we need to do the
+	 * ReadCapacity without any of those helpers.  One of the effects
+	 * is that ReadCapacity may get called 4 times on each open:
+	 * readcap(10) followed by readcap(16) if needed - just to get
+	 * the file size after the init occurs - it will be called
+	 * again when "type_check" is called during structure
+	 * initialization I'm not sure how to prevent this little
+	 * inefficiency.
+	 */
 	unsigned int bs = 0;
 	unsigned long long max_lba = 0;
 	int ret;
@@ -685,11 +761,9 @@ static int fio_sgio_get_file_size(struct thread_data *td, struct fio_file *f)
 		log_err("ioengine sg unable to successfully execute read capacity to get block size and maximum lba\n");
 		return 1;
 	}
+
 	f->real_file_size = (max_lba + 1) * bs;
-
 	fio_file_set_size_known(f);
-	//printf("real_file_size=0x%08llx\n", (long long) f->real_file_size);
-
 	return 0;
 }
 
@@ -701,7 +775,7 @@ static struct ioengine_ops ioengine = {
 	.prep		= fio_sgio_prep,
 	.queue		= fio_sgio_queue,
 	.getevents	= fio_sgio_getevents,
-	.errdetails = fio_sgio_errdetails,
+	.errdetails	= fio_sgio_errdetails,
 	.event		= fio_sgio_event,
 	.cleanup	= fio_sgio_cleanup,
 	.open_file	= fio_sgio_open,
@@ -709,8 +783,6 @@ static struct ioengine_ops ioengine = {
 	.get_file_size	= fio_sgio_get_file_size, // generic_get_file_size
 	.flags		= FIO_SYNCIO | FIO_RAWIO,
 };
-
-
 
 #else /* FIO_HAVE_SGIO */
 
