@@ -160,9 +160,10 @@ static int __get_next_rand_offset_zoned(struct thread_data *td,
 					struct fio_file *f, enum fio_ddir ddir,
 					uint64_t *b)
 {
-	unsigned int i, v, send, atotal, stotal;
+	unsigned int v, send, stotal;
 	uint64_t offset, lastb;
 	static int warned;
+	struct zone_split_index *zsi;
 
 	lastb = last_block(td, f, ddir);
 	if (!lastb)
@@ -178,22 +179,9 @@ bail:
 	 */
 	v = rand_between(&td->zone_state, 1, 100);
 
-	/*
-	 * Find the slot that we should use
-	 */
-	send = -1U;
-	atotal = stotal = 0;
-	for (i = 0; i < td->o.zone_split_nr[ddir]; i++) {
-		struct zone_split *zsp = &td->o.zone_split[ddir][i];
-
-		if (v <= atotal + zsp->access_perc) {
-			send = stotal + zsp->size_perc;
-			break;
-		}
-
-		atotal += zsp->access_perc;
-		stotal += zsp->size_perc;
-	}
+	zsi = &td->zone_state_index[ddir][v - 1];
+	stotal = zsi->size_perc_prev;
+	send = zsi->size_perc;
 
 	/*
 	 * Should never happen

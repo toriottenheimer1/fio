@@ -790,6 +790,12 @@ static int zone_split_ddir(struct thread_options *o, int ddir, char *str)
 		free(zsplit);
 		return 1;
 	}
+	if (perc < 100) {
+		log_err("fio: access percentage don't add up to 100 for zoned "
+			"random distribution (got=%u)\n", perc);
+		free(zsplit);
+		return 1;
+	}
 
 	/*
 	 * If values didn't have a percentage set, divide the remains between
@@ -823,6 +829,44 @@ static int zone_split_ddir(struct thread_options *o, int ddir, char *str)
 	o->zone_split[ddir] = zsplit;
 	return 0;
 }
+
+static void __td_zone_gen_index(struct thread_data *td, enum fio_ddir ddir)
+{
+	unsigned int i, j, sprev, aprev;
+
+	td->zone_state_index[ddir] = malloc(sizeof(struct zone_split_index) * 100);
+
+	sprev = aprev = 0;
+	for (i = 0; i < td->o.zone_split_nr[ddir]; i++) {
+		struct zone_split *zsp = &td->o.zone_split[ddir][i];
+
+		for (j = aprev; j < aprev + zsp->access_perc; j++) {
+			struct zone_split_index *zsi = &td->zone_state_index[ddir][j];
+
+			zsi->size_perc = sprev + zsp->size_perc;
+			zsi->size_perc_prev = sprev;
+		}
+
+		aprev += zsp->access_perc;
+		sprev += zsp->size_perc;
+	}
+}
+
+/*
+ * Generate state table for indexes, so we don't have to do it inline from
+ * the hot IO path
+ */
+static void td_zone_gen_index(struct thread_data *td)
+{
+	int i;
+
+	td->zone_state_index = malloc(DDIR_RWDIR_CNT *
+					sizeof(struct zone_split_index *));
+
+	for (i = 0; i < DDIR_RWDIR_CNT; i++)
+		__td_zone_gen_index(td, i);
+}
+
 
 static int parse_zoned_distribution(struct thread_data *td, const char *input)
 {
@@ -884,15 +928,18 @@ static int parse_zoned_distribution(struct thread_data *td, const char *input)
 	for (i = 0; i < DDIR_RWDIR_CNT; i++) {
 		int j;
 
-		dprint(FD_PARSE, "zone ddir %d: \n", i);
+		dprint(FD_PARSE, "zone ddir %d (nr=%u): \n", i, td->o.zone_split_nr[i]);
 
 		for (j = 0; j < td->o.zone_split_nr[i]; j++) {
 			struct zone_split *zsp = &td->o.zone_split[i][j];
 
-			dprintf(FD_PARSE, "\t%d: %u/%u\n", j, zsp->access_perc,
+			dprint(FD_PARSE, "\t%d: %u/%u\n", j, zsp->access_perc,
 								zsp->size_perc);
 		}
 	}
+
+	if (!ret)
+		td_zone_gen_index(td);
 
 	return ret;
 }
@@ -4366,6 +4413,14 @@ void fio_options_free(struct thread_data *td)
 		options_free(td->io_ops->options, td->eo);
 		free(td->eo);
 		td->eo = NULL;
+	}
+	if (td->zone_state_index) {
+		int i;
+
+		for (i = 0; i < DDIR_RWDIR_CNT; i++)
+			free(td->zone_state_index[i]);
+		free(td->zone_state_index);
+		td->zone_state_index = NULL;
 	}
 }
 

@@ -116,6 +116,11 @@ struct sk_out;
 void sk_out_assign(struct sk_out *);
 void sk_out_drop(void);
 
+struct zone_split_index {
+	uint8_t size_perc;
+	uint8_t size_perc_prev;
+};
+
 /*
  * This describes a single thread/process executing a fio job.
  */
@@ -202,6 +207,8 @@ struct thread_data {
 	struct frand_state buf_state_prev;
 	struct frand_state dedupe_state;
 	struct frand_state zone_state;
+
+	struct zone_split_index **zone_state_index;
 
 	unsigned int verify_batch;
 	unsigned int trim_batch;
