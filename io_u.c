@@ -162,7 +162,6 @@ static int __get_next_rand_offset_zoned(struct thread_data *td,
 {
 	unsigned int i, v, send, atotal, stotal;
 	uint64_t offset, lastb;
-	unsigned long r;
 	static int warned;
 
 	lastb = last_block(td, f, ddir);
@@ -177,8 +176,7 @@ bail:
 	/*
 	 * Generate a value, v, between 1 and 100, both inclusive
 	 */
-	r = __rand(&td->zone_state);
-	v = 1 + (int) (100.0 * (r / (rand_max(&td->zone_state) + 1.0)));
+	v = rand_between(&td->zone_state, 1, 100);
 
 	/*
 	 * Find the slot that we should use
@@ -289,13 +287,11 @@ static inline bool should_sort_io(struct thread_data *td)
 static bool should_do_random(struct thread_data *td, enum fio_ddir ddir)
 {
 	unsigned int v;
-	unsigned long r;
 
 	if (td->o.perc_rand[ddir] == 100)
 		return true;
 
-	r = __rand(&td->seq_rand_state[ddir]);
-	v = 1 + (int) (100.0 * (r / (rand_max(&td->seq_rand_state[ddir]) + 1.0)));
+	v = rand_between(&td->seq_rand_state[ddir], 1, 100);
 
 	return v <= td->o.perc_rand[ddir];
 }
@@ -616,10 +612,8 @@ static void set_rwmix_bytes(struct thread_data *td)
 static inline enum fio_ddir get_rand_ddir(struct thread_data *td)
 {
 	unsigned int v;
-	unsigned long r;
 
-	r = __rand(&td->rwmix_state);
-	v = 1 + (int) (100.0 * (r / (rand_max(&td->rwmix_state) + 1.0)));
+	v = rand_between(&td->rwmix_state, 1, 100);
 
 	if (v <= td->o.rwmix[DDIR_READ])
 		return DDIR_READ;
@@ -1974,7 +1968,6 @@ void io_u_queued(struct thread_data *td, struct io_u *io_u)
 static struct frand_state *get_buf_state(struct thread_data *td)
 {
 	unsigned int v;
-	unsigned long r;
 
 	if (!td->o.dedupe_percentage)
 		return &td->buf_state;
@@ -1983,8 +1976,7 @@ static struct frand_state *get_buf_state(struct thread_data *td)
 		return &td->buf_state;
 	}
 
-	r = __rand(&td->dedupe_state);
-	v = 1 + (int) (100.0 * (r / (rand_max(&td->dedupe_state) + 1.0)));
+	v = rand_between(&td->dedupe_state, 1, 100);
 
 	if (v <= td->o.dedupe_percentage)
 		return &td->buf_state_prev;
