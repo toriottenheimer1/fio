@@ -884,12 +884,16 @@ static int parse_zoned_distribution(struct thread_data *td, const char *input)
 	for (i = 0; i < DDIR_RWDIR_CNT; i++) {
 		int j;
 
-		printf("zone ddir %d: \n", i);
+		dprint(FD_PARSE, "zone ddir %d: \n", i);
+
 		for (j = 0; j < td->o.zone_split_nr[i]; j++) {
 			struct zone_split *zsp = &td->o.zone_split[i][j];
-			printf("\t%d: %u/%u\n", j, zsp->access_perc, zsp->size_perc);
+
+			dprintf(FD_PARSE, "\t%d: %u/%u\n", j, zsp->access_perc,
+								zsp->size_perc);
 		}
 	}
+
 	return ret;
 }
 
