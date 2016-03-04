@@ -96,6 +96,7 @@ enum {
 	FIO_RAND_START_DELAY,
 	FIO_DEDUPE_OFF,
 	FIO_RAND_POISSON_OFF,
+	FIO_RAND_ZONE_OFF,
 	FIO_RAND_NR_OFFS,
 };
 
@@ -200,6 +201,7 @@ struct thread_data {
 	struct frand_state buf_state;
 	struct frand_state buf_state_prev;
 	struct frand_state dedupe_state;
+	struct frand_state zone_state;
 
 	unsigned int verify_batch;
 	unsigned int trim_batch;
@@ -712,6 +714,7 @@ enum {
 	FIO_RAND_DIST_ZIPF,
 	FIO_RAND_DIST_PARETO,
 	FIO_RAND_DIST_GAUSS,
+	FIO_RAND_DIST_ZONED,
 };
 
 #define FIO_DEF_ZIPF		1.1

@@ -86,17 +86,14 @@ struct rand_off {
 };
 
 static int __get_next_rand_offset(struct thread_data *td, struct fio_file *f,
-				  enum fio_ddir ddir, uint64_t *b)
+				  enum fio_ddir ddir, uint64_t *b,
+				  uint64_t lastb)
 {
 	uint64_t r;
 
 	if (td->o.random_generator == FIO_RAND_GEN_TAUSWORTHE ||
 	    td->o.random_generator == FIO_RAND_GEN_TAUSWORTHE64) {
-		uint64_t frand_max, lastb;
-
-		lastb = last_block(td, f, ddir);
-		if (!lastb)
-			return 1;
+		uint64_t frand_max;
 
 		frand_max = rand_max(&td->random_state);
 		r = __rand(&td->random_state);
@@ -161,6 +158,85 @@ static int __get_next_rand_offset_gauss(struct thread_data *td,
 	return 0;
 }
 
+static int __get_next_rand_offset_zoned(struct thread_data *td,
+					struct fio_file *f, enum fio_ddir ddir,
+					uint64_t *b)
+{
+	unsigned int i, v, send, atotal, stotal;
+	uint64_t offset, frand_max, lastb;
+	unsigned long r;
+	static int warned;
+
+	lastb = last_block(td, f, ddir);
+	if (!lastb)
+		return 1;
+
+	if (!td->o.zone_split_nr[ddir]) {
+bail:
+		return __get_next_rand_offset(td, f, ddir, b, lastb);
+	}
+
+	/*
+	 * Generate a value, v, between 1 and 100, both inclusive
+	 */
+	frand_max = rand_max(&td->zone_state);
+	r = __rand(&td->zone_state);
+	v = 1 + (int) (100.0 * (r / (frand_max + 1.0)));
+
+	/*
+	 * Find the slot that we should use
+	 */
+	send = -1U;
+	atotal = stotal = 0;
+	for (i = 0; i < td->o.zone_split_nr[ddir]; i++) {
+		struct zone_split *zsp = &td->o.zone_split[ddir][i];
+
+		if (v <= atotal + zsp->access_perc) {
+			send = stotal + zsp->size_perc;
+			break;
+		}
+
+		atotal += zsp->access_perc;
+		stotal += zsp->size_perc;
+	}
+
+	/*
+	 * Should never happen
+	 */
+	if (send == -1U) {
+		if (!warned) {
+			log_err("fio: bug in zoned generation\n");
+			warned = 1;
+		}
+		goto bail;
+	}
+
+	/*
+	 * 'send' is some percentage below or equal to 100 that
+	 * marks the end of the current IO range. 'stotal' marks
+	 * the start, in percent.
+	 */
+	if (stotal)
+		offset = stotal * lastb / 100ULL;
+	else
+		offset = 0;
+
+	lastb = lastb * (send - stotal) / 100ULL;
+
+	/*
+	 * Generate index from 0..send-of-lastb
+	 */
+	if (__get_next_rand_offset(td, f, ddir, b, lastb) == 1)
+		return 1;
+
+	/*
+	 * Add our start offset, if any
+	 */
+	if (offset)
+		*b += offset;
+
+	return 0;
+}
 
 static int flist_cmp(void *data, struct flist_head *a, struct flist_head *b)
 {
@@ -173,14 +249,22 @@ static int flist_cmp(void *data, struct flist_head *a, struct flist_head *b)
 static int get_off_from_method(struct thread_data *td, struct fio_file *f,
 			       enum fio_ddir ddir, uint64_t *b)
 {
-	if (td->o.random_distribution == FIO_RAND_DIST_RANDOM)
-		return __get_next_rand_offset(td, f, ddir, b);
-	else if (td->o.random_distribution == FIO_RAND_DIST_ZIPF)
+	if (td->o.random_distribution == FIO_RAND_DIST_RANDOM) {
+		uint64_t lastb;
+
+		lastb = last_block(td, f, ddir);
+		if (!lastb)
+			return 1;
+
+		return __get_next_rand_offset(td, f, ddir, b, lastb);
+	} else if (td->o.random_distribution == FIO_RAND_DIST_ZIPF)
 		return __get_next_rand_offset_zipf(td, f, ddir, b);
 	else if (td->o.random_distribution == FIO_RAND_DIST_PARETO)
 		return __get_next_rand_offset_pareto(td, f, ddir, b);
 	else if (td->o.random_distribution == FIO_RAND_DIST_GAUSS)
 		return __get_next_rand_offset_gauss(td, f, ddir, b);
+	else if (td->o.random_distribution == FIO_RAND_DIST_ZONED)
+		return __get_next_rand_offset_zoned(td, f, ddir, b);
 
 	log_err("fio: unknown random distribution: %d\n", td->o.random_distribution);
 	return 1;
